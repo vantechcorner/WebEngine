@@ -14,7 +14,7 @@
 echo '<h1 class="page-header">Online Accounts</h1>';
 
 $Account = new Account();
-$serverList = $Account->getServerList();
+$serverList = array('OpenMU');
 
 if(is_array($serverList)) {
 	echo '<div class="row">';
@@ -28,10 +28,10 @@ if(is_array($serverList)) {
 }
 
 echo '<div class="row">';
-	echo '<h3>Total Online:</h3>';
-	echo '<div class="col-xs-12 col-md-4 col-lg-3 text-center">';
-		echo '<pre><strong>TOTAL</strong>: '.number_format($Account->getOnlineAccountCount()).'</pre>';
-	echo '</div>';
+    echo '<h3>Total Online:</h3>';
+    echo '<div class="col-xs-12 col-md-4 col-lg-3 text-center">';
+        echo '<pre><strong>TOTAL</strong>: '.number_format($Account->getOnlineAccountCount()).'</pre>';
+    echo '</div>';
 echo '</div>';
 
 $onlineAccounts = $Account->getOnlineAccountList();
@@ -49,9 +49,9 @@ echo '<div class="row">';
 			echo '<tbody>';
 			foreach($onlineAccounts as $row) {
 				echo '<tr>';
-					echo '<td><a href="'.admincp_base('accountinfo&u='.$row[_CLMN_MS_MEMBID_]).'" target="_blank">'.$row[_CLMN_MS_MEMBID_].'</a></td>';
-					echo '<td>'.$row[_CLMN_MS_IP_].'</td>';
-					echo '<td>'.$row[_CLMN_MS_GS_].'</td>';
+                    echo '<td><a href="'.admincp_base('accountinfo&id='.$row['AccountId']).'" target="_blank">'.$row['AccountId'].'</a></td>';
+                    echo '<td>'.$row['IP'].'</td>';
+                    echo '<td>OpenMU</td>';
 				echo '</tr>';
 			}
 			echo '</tbody>';

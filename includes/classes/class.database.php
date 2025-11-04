@@ -25,14 +25,31 @@ class dB {
 	function __construct($SQLHOST, $SQLPORT, $SQLDB, $SQLUSER, $SQLPWD, $SQLDRIVER) {
 		try {
 			
-			$pdo_connect = 'dblib:host='.$SQLHOST.':'.$SQLPORT.';dbname='.$SQLDB;
-			if($SQLDRIVER == 2) {
-				$pdo_connect = "sqlsrv:Server=".$SQLHOST.",".$SQLPORT.";Database=".$SQLDB."";
+			switch($SQLDRIVER) {
+				case 1: // dblib (SQL Server)
+					$pdo_connect = 'dblib:host='.$SQLHOST.':'.$SQLPORT.';dbname='.$SQLDB;
+					break;
+				case 2: // sqlsrv (SQL Server)
+					$pdo_connect = "sqlsrv:Server=".$SQLHOST.",".$SQLPORT.";Database=".$SQLDB."";
+					break;
+				case 3: // PostgreSQL (OpenMU)
+				case 4: // PostgreSQL (installer pgsql option)
+					$pdo_connect = 'pgsql:host='.$SQLHOST.';port='.$SQLPORT.';dbname='.$SQLDB.';options=--search_path=data,guild,friend,config,public';
+					break;
+				default:
+					throw new Exception('Invalid database driver specified.');
 			}
+			
 			$this->db = new PDO($pdo_connect, $SQLUSER, $SQLPWD);
 			
-			if($this->db->getAttribute(PDO::ATTR_EMULATE_PREPARES) == false) {
-				$this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+			// Set PostgreSQL specific attributes
+			if($SQLDRIVER == 3 || $SQLDRIVER == 4) {
+				$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+				$this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+			} else {
+				if($this->db->getAttribute(PDO::ATTR_EMULATE_PREPARES) == false) {
+					$this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+				}
 			}
 			
 		} catch (PDOException $e) {

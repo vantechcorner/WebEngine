@@ -13,14 +13,15 @@
 ?>
 <h2>Top Voters</h2>
 <?php
-$database = (config('SQL_USE_2_DB',true) ? $dB2 : $dB);
+$database = $dB;
 
 $currentMonth = date("m");
 $nextMonth = $currentMonth+1;
 
 $ts1 = strtotime(date("m/01/Y 00:00"));
 $ts2 = strtotime(date("$nextMonth/01/Y 00:00"));
-$voteLogs = $database->query_fetch("SELECT TOP 100 user_id, COUNT(*) as totalvotes FROM ".WEBENGINE_VOTE_LOGS." WHERE timestamp BETWEEN ? AND ? GROUP BY user_id ORDER BY totalvotes DESC", array($ts1,$ts2));
+// OpenMU: read from data.webengine_vote_logs (voted_at) with UUID account_id
+$voteLogs = $database->query_fetch("SELECT account_id, COUNT(*) as totalvotes FROM data.webengine_vote_logs WHERE voted_at BETWEEN TO_TIMESTAMP(?) AND TO_TIMESTAMP(?) GROUP BY account_id ORDER BY totalvotes DESC LIMIT 100", array($ts1,$ts2));
 
 if($voteLogs && is_array($voteLogs)) {
 	
@@ -31,12 +32,13 @@ if($voteLogs && is_array($voteLogs)) {
 			echo '<th>Votes</th>';
 		echo '</tr>';
 		
-		foreach($voteLogs as $key => $thisVote) {
-			$accountInfo = $common->accountInformation($thisVote['user_id']);
+        foreach($voteLogs as $key => $thisVote) {
+            $accountInfo = $common->accountInformation($thisVote['account_id']);
 			$keyx = $key+1;
 			echo '<tr>';
 				echo '<td>'.$keyx.'</td>';
-				echo '<td>'.$accountInfo[_CLMN_USERNM_].'</td>';
+                $ai = is_array($accountInfo) ? array_change_key_case($accountInfo, CASE_LOWER) : array();
+                echo '<td>'.($ai['loginname'] ?? $ai[strtolower(_CLMN_USERNM_)] ?? '-').'</td>';
 				echo '<td>'.$thisVote['totalvotes'].'</td>';
 			echo '</tr>';
 		}

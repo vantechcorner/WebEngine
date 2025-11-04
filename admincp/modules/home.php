@@ -48,22 +48,22 @@ echo '<div class="row">';
 				
 				$database = (config('SQL_USE_2_DB',true) ? $dB2 : $dB);
 				
-				// Total Accounts
-				$totalAccounts = $database->query_fetch_single("SELECT COUNT(*) as result FROM MEMB_INFO");
+				// Total Accounts (OpenMU uses data."Account")
+				$totalAccounts = $database->query_fetch_single("SELECT COUNT(*) as result FROM data.\"Account\"");
 				echo '<div class="list-group-item">';
 					echo 'Registered Accounts';
 					echo '<span class="pull-right text-muted small">'.number_format($totalAccounts['result']).'</span>';
 				echo '</div>';
 				
-				// Banned Accounts
-				$bannedAccounts = $database->query_fetch_single("SELECT COUNT(*) as result FROM MEMB_INFO WHERE bloc_code = 1");
+				// Banned Accounts (OpenMU Account.State = 1)
+				$bannedAccounts = $database->query_fetch_single("SELECT COUNT(*) as result FROM data.\"Account\" WHERE \"State\" = 1");
 				echo '<div class="list-group-item">';
 					echo 'Banned Accounts';
 					echo '<span class="pull-right text-muted small">'.number_format($bannedAccounts['result']).'</span>';
 				echo '</div>';
 				
 				// Total Characters
-				$totalCharacters = $dB->query_fetch_single("SELECT COUNT(*) as result FROM Character");
+				$totalCharacters = $dB->query_fetch_single("SELECT COUNT(*) as result FROM data.\"Character\"");
 				echo '<div class="list-group-item">';
 					echo 'Characters';
 					echo '<span class="pull-right text-muted small">'.number_format($totalCharacters['result']).'</span>';

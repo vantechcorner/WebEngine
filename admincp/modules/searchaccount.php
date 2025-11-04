@@ -23,10 +23,10 @@
 	if(isset($_POST['search_account']) && isset($_POST['search_request'])) {
 		try {
 			if(!Validator::Length($_POST['search_request'], 11, 2)) throw new Exception("The username can be 3 to 10 characters long.");
-			$searchdb = (config('SQL_USE_2_DB', true) == true ? $dB2 : $dB);
+			$searchdb = $dB; // OpenMU uses a single PostgreSQL database
 			
 			$searchRequest = '%'.$_POST['search_request'].'%';
-			$searchResults = $searchdb->query_fetch("SELECT "._CLMN_MEMBID_.", "._CLMN_USERNM_." FROM "._TBL_MI_." WHERE "._CLMN_USERNM_." LIKE ?", array($searchRequest));
+			$searchResults = $searchdb->query_fetch("SELECT "._CLMN_ACCOUNT_ID_." AS id, "._CLMN_ACCOUNT_LOGIN_." AS login FROM "._TBL_ACCOUNT_." WHERE "._CLMN_ACCOUNT_LOGIN_." ILIKE ?", array($searchRequest));
 			if(!$searchResults) throw new Exception("No results found.");
 			
 			if(is_array($searchResults)) {
@@ -41,9 +41,9 @@
 					echo '<tbody>';
 				foreach($searchResults as $account) {
 					echo '<tr>';
-						echo '<td>'.$account[_CLMN_USERNM_].'</td>';
+						echo '<td>'.($account['login'] ?? $account[_CLMN_USERNM_]).'</td>';
 						echo '<td style="text-align:right;">';
-							echo '<a href="'.admincp_base("accountinfo&id=".$account[_CLMN_MEMBID_]).'" class="btn btn-xs btn-default">Account Information</a>';
+							echo '<a href="'.admincp_base("accountinfo&id=".($account['id'] ?? $account[_CLMN_MEMBID_])).'" class="btn btn-xs btn-default">Account Information</a>';
 						echo '</td>';
 					echo '</tr>';
 				}

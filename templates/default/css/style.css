@@ -91,7 +91,7 @@ input[type=text]:focus, input[type=password]:focus, input[type=number]:focus {
 	background: #efefef;
 	font-family: 'Segoe UI', 'Lucida Sans Unicode', 'Lucida Grande', 'Tahoma', 'Arial', 'sans-serif';
 	width: 1040px;
-	font-size: 12px;
+        font-size: 13px;
 	color: #666666;
 	padding: 40px;
 	overflow: auto;
@@ -683,9 +683,16 @@ input[type=text]:focus, input[type=password]:focus, input[type=number]:focus {
 		.header-info-container .header-info .header-info-block #tServerDate, .header-info-container .header-info .header-info-block #tLocalDate {
 			color: #cccccc;
 		}
-		.header-info-container .header-info .header-info-block .online-count {
-			color: #00ff00;
-		}
+        .header-info-container .header-info .header-info-block .online-count {
+            color: #00ff00;
+			font-size: 13px;
+            font-weight: bold;
+        }
+
+/* SERVER STATUS */
+.server-status { font-weight: bold; }
+.server-status-online { color: #00ff00; }
+.server-status-offline { color: #ff0000; }
 	
 /* ONLINE BAR */
 .webengine-online-bar {

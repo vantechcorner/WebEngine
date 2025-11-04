@@ -21,9 +21,9 @@ try {
 	
 	// Login Process
 	if(isset($_POST['webengineLogin_submit'])) {
-		try {
-			$userLogin = new login();
-			$userLogin->validateLogin($_POST['webengineLogin_user'],$_POST['webengineLogin_pwd']);
+        try {
+            $userLogin = class_exists('LoginOpenMU') ? new LoginOpenMU() : new login();
+            $userLogin->validateLogin($_POST['webengineLogin_user'], $_POST['webengineLogin_pwd']);
 		} catch (Exception $ex) {
 			message('error', $ex->getMessage());
 		}

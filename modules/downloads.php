@@ -24,16 +24,18 @@ try {
 	$downloadsCACHE = loadCache('downloads.cache');
 	if(is_array($downloadsCACHE)) {
 		foreach($downloadsCACHE as $tempDownloadsData) {
-			switch($tempDownloadsData['download_type']) {
-				case 1:
-					$downloadCLIENTS[] = $tempDownloadsData;
-				break;
-				case 2:
-					$downloadPATCHES[] = $tempDownloadsData;
-				break;
-				case 3:
-					$downloadTOOLS[] = $tempDownloadsData;
-				break;
+			$type = isset($tempDownloadsData['download_type']) ? (int)$tempDownloadsData['download_type'] : null;
+			if($type === null) {
+				// OpenMU cache shape: no type; group by presence of words in title/description
+				$label = strtolower(($tempDownloadsData['download_title'] ?? '').' '.($tempDownloadsData['download_description'] ?? ''));
+				if(strpos($label,'patch') !== false) { $type = 2; }
+				elseif(strpos($label,'tool') !== false) { $type = 3; }
+				else { $type = 1; }
+			}
+			switch($type) {
+				case 1: $downloadCLIENTS[] = $tempDownloadsData; break;
+				case 2: $downloadPATCHES[] = $tempDownloadsData; break;
+				case 3: $downloadTOOLS[] = $tempDownloadsData; break;
 			}
 		}
 	}

@@ -16,7 +16,7 @@ try {
 	// Module status
 	if(!mconfig('active')) throw new Exception(lang('error_47',true));
 	
-	// News object
+    // News object
 	$News = new News();
 	$cachedNews = loadCache('news.cache');
 	if(!is_array($cachedNews)) throw new Exception(lang('error_61'));
@@ -28,7 +28,10 @@ try {
 		}
 	}
 	
-	// Single news
+    // Optional category filter
+    $requestedCategory = isset($_GET['category']) ? trim($_GET['category']) : '';
+
+    // Single news
 	$requestedNewsId = isset($_GET['subpage']) ? $_GET['subpage'] : '';
 	$showSingleNews = false;
 	if(check_value($requestedNewsId) && $News->newsIdExists($requestedNewsId)) {
@@ -36,9 +39,12 @@ try {
 		$newsID = $requestedNewsId;
 	}
 	
-	// News list
+    // News list
 	$i = 0;
 	foreach($cachedNews as $newsArticle) {
+        if($requestedCategory !== '' && isset($newsArticle['category'])) {
+            if(strcasecmp($newsArticle['category'], $requestedCategory) !== 0) continue;
+        }
 		if($showSingleNews) if($newsArticle['news_id'] != $newsID) continue;
 		$News->setId($newsArticle['news_id']);
 		
@@ -57,21 +63,33 @@ try {
 			}
 		}
 		
-		if(mconfig('news_short')) {
-			if($showSingleNews) {
-				$loadNewsCache = $News->LoadCachedNews();
-			} else {
-				$loadNewsCache = $News->LoadCachedNews(true);
-				$loadNewsCache .= '<a href="'.$news_url.'" class="news-readmore">' . lang('news_txt_3') . '</a>';
-			}
-		} else {
+		// Build content: single = full, list = 500-word excerpt with Read more
+		if($showSingleNews) {
 			$loadNewsCache = $News->LoadCachedNews();
+		} else {
+			$fullContent = $News->LoadCachedNews();
+			$noTags = strip_tags($fullContent);
+			$decoded = html_entity_decode($noTags, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$plain = trim(preg_replace('/\s+/u', ' ', $decoded));
+			$words = preg_split('/\s+/u', $plain, -1, PREG_SPLIT_NO_EMPTY);
+			if(count($words) > 250) {
+				$excerpt = implode(' ', array_slice($words, 0, 250)) . '...';
+			} else {
+				$excerpt = $plain;
+			}
+			$loadNewsCache = '<p>'.$excerpt.'</p>';
+			$loadNewsCache .= '<div><a href="'.$news_url.'" class="btn btn-xs btn-default news-readmore">' . lang('news_txt_3') . '</a></div>';
 		}
 		
-		echo '<div class="panel panel-news">';
-			echo '<div class="panel-heading">';
-				echo '<h3 class="panel-title"><a href="'.$news_url.'">'.$news_title.'</a></h3>';
-			echo '</div>';
+			echo '<div class="panel panel-news">';
+				echo '<div class="panel-heading">';
+					$catBadge = '';
+					if(isset($newsArticle['category']) && $newsArticle['category']) {
+						$catUrl = __BASE_URL__.'news/?category='.urlencode($newsArticle['category']);
+						$catBadge = '<span class="label label-default" style="margin-right:8px;"><a href="'.$catUrl.'" style="color:inherit; text-decoration:none;">'.htmlspecialchars($newsArticle['category']).'</a></span> ';
+					}
+					echo '<h3 class="panel-title">'.$catBadge.'<a href="'.$news_url.'">'.$news_title.'</a></h3>';
+				echo '</div>';
 			if(mconfig('news_expanded') > $i) {
 				echo '<div class="panel-body">';
 					echo $loadNewsCache;

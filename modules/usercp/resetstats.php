@@ -20,7 +20,7 @@ try {
 	if(!mconfig('active')) throw new Exception(lang('error_47',true));
 	
 	$Character = new Character();
-	$AccountCharacters = $Character->AccountCharacter($_SESSION['username']);
+	$AccountCharacters = $Character->AccountCharacter(isset($_SESSION['userid'])?$_SESSION['userid']:$_SESSION['username']);
 	if(!is_array($AccountCharacters)) throw new Exception(lang('error_46',true));
 	
 	if(isset($_POST['submit'])) {
@@ -49,19 +49,28 @@ try {
 		
 		foreach($AccountCharacters as $thisCharacter) {
 			$characterData = $Character->CharacterData($thisCharacter);
-			$characterIMG = $Character->GenerateCharacterClassAvatar($characterData[_CLMN_CHR_CLASS_]);
+			if(!is_array($characterData)) continue;
+			$characterData_l = array_change_key_case($characterData, CASE_LOWER);
+			$rawClass = isset($characterData[_CLMN_CHR_CLASS_]) ? $characterData[_CLMN_CHR_CLASS_] : ($characterData['CharacterClassId'] ?? ($characterData_l['characterclassid'] ?? 0));
+			$legacyClassNum = 0;
+			if(is_numeric($rawClass)) { $legacyClassNum = (int)$rawClass; } else { if(function_exists('getOpenMUClassNumberById')) $legacyClassNum = getOpenMUClassNumberById($rawClass); }
+			$characterIMG = $Character->GenerateCharacterClassAvatar($legacyClassNum);
 			
 			echo '<form action="" method="post">';
-				echo '<input type="hidden" name="character" value="'.$characterData[_CLMN_CHR_NAME_].'"/>';
+					echo '<input type="hidden" name="character" value="'.($characterData[_CLMN_CHR_NAME_] ?? ($characterData['Name'] ?? ($characterData_l['name'] ?? ''))).'"/>';
 				echo '<tr>';
 					echo '<td>'.$characterIMG.'</td>';
-					echo '<td>'.$characterData[_CLMN_CHR_NAME_].'</td>';
-					echo '<td>'.$characterData[_CLMN_CHR_LVL_].'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_STAT_STR_]).'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_STAT_AGI_]).'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_STAT_VIT_]).'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_STAT_ENE_]).'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_STAT_CMD_]).'</td>';
+					echo '<td>'.($characterData[_CLMN_CHR_NAME_] ?? ($characterData['Name'] ?? ($characterData_l['name'] ?? ''))).'</td>';
+					$exp = $characterData['Experience'] ?? ($characterData_l['experience'] ?? ($characterData[_CLMN_CHAR_EXPERIENCE_] ?? null));
+					$dispLevel = (is_numeric($characterData[_CLMN_CHR_LVL_] ?? null) ? (int)$characterData[_CLMN_CHR_LVL_] : (is_numeric($exp) && function_exists('calculateOpenMULevel') ? calculateOpenMULevel($exp) : 0));
+					echo '<td>'.$dispLevel.'</td>';
+					$charId = $characterData['Id'] ?? ($characterData_l['id'] ?? null);
+					$stats = function_exists('getOpenMUCharacterStats') && $charId ? getOpenMUCharacterStats($charId) : array();
+					echo '<td>'.number_format($stats['Strength'] ?? ($characterData[_CLMN_CHR_STAT_STR_] ?? 0)).'</td>';
+					echo '<td>'.number_format($stats['Agility'] ?? ($characterData[_CLMN_CHR_STAT_AGI_] ?? 0)).'</td>';
+					echo '<td>'.number_format($stats['Vitality'] ?? ($characterData[_CLMN_CHR_STAT_VIT_] ?? 0)).'</td>';
+					echo '<td>'.number_format($stats['Energy'] ?? ($characterData[_CLMN_CHR_STAT_ENE_] ?? 0)).'</td>';
+					echo '<td>'.number_format($stats['Leadership'] ?? ($characterData[_CLMN_CHR_STAT_CMD_] ?? 0)).'</td>';
 					echo '<td><button name="submit" value="submit" class="btn btn-primary">'.lang('resetstats_txt_8',true).'</button></td>';
 				echo '</tr>';
 			echo '</form>';

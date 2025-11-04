@@ -25,6 +25,10 @@ $webengine['file_compatibility'] = array(
 		'name' => 'X-Team, MuEmu, Louis',
 		'file' => 'xteam.tables.php',
 	),
+	'openmu' => array(
+		'name' => 'OpenMU (Modern)',
+		'file' => 'openmu.tables.php',
+	),
 	'custom' => array(
 		'name' => 'Custom (IGCN Based)',
 		'file' => 'custom.tables.php',

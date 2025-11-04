@@ -76,22 +76,35 @@ function checkVersion() {
 }
 
 function getDownloadsList() {
-	$db = config('SQL_USE_2_DB',true) ? Connection::Database('Me_MuOnline') : Connection::Database('MuOnline');
-	$result = $db->query_fetch("SELECT * FROM ".WEBENGINE_DOWNLOADS." ORDER BY download_type ASC, download_id ASC");
-	if(!is_array($result)) return;
-	return $result;
+    $db = Connection::Database('MuOnline');
+    // OpenMU installer defines data.webengine_downloads (no download_type); align query
+    $exists = $db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema='data' AND table_name='webengine_downloads'");
+    if(is_array($exists)) {
+        return $db->query_fetch("SELECT id AS download_id, title AS download_title, description AS download_description, file_path AS download_link, file_size AS download_size, active,
+            CASE WHEN LOWER(COALESCE(category,'')) = 'patch' THEN 2 WHEN LOWER(COALESCE(category,'')) = 'tool' THEN 3 ELSE 1 END AS download_type
+            FROM data.webengine_downloads ORDER BY id ASC");
+    }
+    $result = $db->query_fetch("SELECT * FROM ".WEBENGINE_DOWNLOADS." ORDER BY download_type ASC, download_id ASC");
+    if(!is_array($result)) return;
+    return $result;
 }
 
 function addDownload($title, $description='', $link, $size=0, $type=1) {
-	$db = config('SQL_USE_2_DB',true) ? Connection::Database('Me_MuOnline') : Connection::Database('MuOnline');
+    $db = Connection::Database('MuOnline');
 	if(!check_value($title)) return;
 	if(!check_value($link)) return;
 	if(!check_value($size)) return;
 	if(!check_value($type)) return;
 	if(strlen($title) > 100) return;
 	if(strlen($description) > 100) return;
-	
-	$result = $db->query("INSERT INTO ".WEBENGINE_DOWNLOADS." (download_title, download_description, download_link, download_size, download_type) VALUES (?, ?, ?, ?, ?)", array($title, $description, $link, $size, $type));
+    // OpenMU path
+    $exists = $db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema='data' AND table_name='webengine_downloads'");
+    if(is_array($exists)) {
+        $cat = ($type == 2 ? 'patch' : ($type == 3 ? 'tool' : 'client'));
+        $result = $db->query("INSERT INTO data.webengine_downloads (title, description, file_path, file_size, active, category) VALUES (?, ?, ?, ?, true, ?)", array($title, $description, $link, $size, $cat));
+    } else {
+        $result = $db->query("INSERT INTO ".WEBENGINE_DOWNLOADS." (download_title, download_description, download_link, download_size, download_type) VALUES (?, ?, ?, ?, ?)", array($title, $description, $link, $size, $type));
+    }
 	if(!$result) return;
 	
 	@updateDownloadsCache();
@@ -99,7 +112,7 @@ function addDownload($title, $description='', $link, $size=0, $type=1) {
 }
 
 function editDownload($id, $title, $description='', $link, $size=0, $type=1) {
-	$db = config('SQL_USE_2_DB',true) ? Connection::Database('Me_MuOnline') : Connection::Database('MuOnline');
+    $db = Connection::Database('MuOnline');
 	if(!check_value($id)) return;
 	if(!check_value($title)) return;
 	if(!check_value($link)) return;
@@ -107,8 +120,14 @@ function editDownload($id, $title, $description='', $link, $size=0, $type=1) {
 	if(!check_value($type)) return;
 	if(strlen($title) > 100) return;
 	if(strlen($description) > 100) return;
-	
-	$result = $db->query("UPDATE ".WEBENGINE_DOWNLOADS." SET download_title = ?, download_description = ?, download_link = ?, download_size = ?, download_type = ? WHERE download_id = ?", array($title, $description, $link, $size, $type, $id));
+    // OpenMU path
+    $exists = $db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema='data' AND table_name='webengine_downloads'");
+    if(is_array($exists)) {
+        $cat = ($type == 2 ? 'patch' : ($type == 3 ? 'tool' : 'client'));
+        $result = $db->query("UPDATE data.webengine_downloads SET title = ?, description = ?, file_path = ?, file_size = ?, category = ? WHERE id = ?", array($title, $description, $link, $size, $cat, $id));
+    } else {
+        $result = $db->query("UPDATE ".WEBENGINE_DOWNLOADS." SET download_title = ?, download_description = ?, download_link = ?, download_size = ?, download_type = ? WHERE download_id = ?", array($title, $description, $link, $size, $type, $id));
+    }
 	if(!$result) return;
 	
 	@updateDownloadsCache();
@@ -116,9 +135,14 @@ function editDownload($id, $title, $description='', $link, $size=0, $type=1) {
 }
 
 function deleteDownload($id) {
-	$db = config('SQL_USE_2_DB',true) ? Connection::Database('Me_MuOnline') : Connection::Database('MuOnline');
+    $db = Connection::Database('MuOnline');
 	if(!check_value($id)) return;
-	$result = $db->query("DELETE FROM ".WEBENGINE_DOWNLOADS." WHERE download_id = ?", array($id));
+    $exists = $db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema='data' AND table_name='webengine_downloads'");
+    if(is_array($exists)) {
+        $result = $db->query("DELETE FROM data.webengine_downloads WHERE id = ?", array($id));
+    } else {
+        $result = $db->query("DELETE FROM ".WEBENGINE_DOWNLOADS." WHERE download_id = ?", array($id));
+    }
 	if(!$result) return;
 	
 	@updateDownloadsCache();
@@ -126,11 +150,18 @@ function deleteDownload($id) {
 }
 
 function updateDownloadsCache() {
-	$db = config('SQL_USE_2_DB',true) ? Connection::Database('Me_MuOnline') : Connection::Database('MuOnline');
-	$downloadsData = $db->query_fetch("SELECT * FROM ".WEBENGINE_DOWNLOADS." ORDER BY download_type ASC, download_id ASC");
-	$cacheData = encodeCache($downloadsData);
-	updateCacheFile('downloads.cache', $cacheData);
-	return true;
+    $db = Connection::Database('MuOnline');
+    $exists = $db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema='data' AND table_name='webengine_downloads'");
+    if(is_array($exists)) {
+        $downloadsData = $db->query_fetch("SELECT id AS download_id, title AS download_title, description AS download_description, file_path AS download_link, file_size AS download_size, active,
+            CASE WHEN LOWER(COALESCE(category,'')) = 'patch' THEN 2 WHEN LOWER(COALESCE(category,'')) = 'tool' THEN 3 ELSE 1 END AS download_type
+            FROM data.webengine_downloads ORDER BY id ASC");
+    } else {
+        $downloadsData = $db->query_fetch("SELECT * FROM ".WEBENGINE_DOWNLOADS." ORDER BY download_type ASC, download_id ASC");
+    }
+    $cacheData = encodeCache($downloadsData);
+    updateCacheFile('downloads.cache', $cacheData);
+    return true;
 }
 
 function weekDaySelectOptions($selected='Monday') {

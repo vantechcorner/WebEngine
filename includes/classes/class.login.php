@@ -22,7 +22,7 @@ class login {
 		global $_SESSION;
 		
 		$this->common = new common();
-		$this->me = Connection::Database('Me_MuOnline');
+		$this->me = Connection::Database('MuOnline');
 		
 		$loginConfigs = loadConfigurations('login');
 		if(!is_array($loginConfigs)) throw new Exception(lang('error_98'));
@@ -64,6 +64,7 @@ class login {
 	
 	public function canLogin($ipaddress) {
 		if(!Validator::Ip($ipaddress)) return;
+		$this->ensureFlaTable();
 		$failedLogins = $this->checkFailedLogins($ipaddress);
 		if($failedLogins < $this->_config['max_login_attempts']) return true;
 		
@@ -77,6 +78,7 @@ class login {
 	
 	public function checkFailedLogins($ipaddress) {
 		if(!Validator::Ip($ipaddress)) return;
+		$this->ensureFlaTable();
 		$result = $this->me->query_fetch_single("SELECT * FROM ".WEBENGINE_FLA." WHERE ip_address = ? ORDER BY id DESC", array($ipaddress));
 		if(!is_array($result)) return;
 		return $result['failed_attempts'];
@@ -87,6 +89,7 @@ class login {
 		if(!Validator::AlphaNumeric($username)) return;
 		if(!Validator::Ip($ipaddress)) return;
 		if(!$this->common->userExists($username)) return;
+		$this->ensureFlaTable();
 		
 		$failedLogins = $this->checkFailedLogins($ipaddress);
 		$timeout = time()+$this->_config['failed_login_timeout']*60;
@@ -109,6 +112,7 @@ class login {
 	
 	public function removeFailedLogins($ipaddress) {
 		if(!Validator::Ip($ipaddress)) return;
+		$this->ensureFlaTable();
 		$this->me->query("DELETE FROM ".WEBENGINE_FLA." WHERE ip_address = ?", array($ipaddress));
 	}
 	
@@ -116,6 +120,20 @@ class login {
 		$_SESSION = array();
 		session_destroy();
 		redirect();
+	}
+
+	private function ensureFlaTable() {
+		// Create the failed login attempts table if it does not exist (PostgreSQL safe)
+		$this->me->query(
+			"CREATE TABLE IF NOT EXISTS public.webengine_fla (\n".
+			"    id SERIAL PRIMARY KEY,\n".
+			"    username VARCHAR(50),\n".
+			"    ip_address INET NOT NULL,\n".
+			"    unlock_timestamp BIGINT DEFAULT 0,\n".
+			"    failed_attempts INTEGER DEFAULT 0,\n".
+			"    timestamp BIGINT DEFAULT 0\n".
+			")"
+		);
 	}
 
 }

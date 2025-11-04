@@ -20,7 +20,7 @@ try {
 	if(!mconfig('active')) throw new Exception(lang('error_47',true));
 	
 	$Character = new Character();
-	$AccountCharacters = $Character->AccountCharacter($_SESSION['username']);
+	$AccountCharacters = $Character->AccountCharacter(isset($_SESSION['userid'])?$_SESSION['userid']:$_SESSION['username']);
 	if(!is_array($AccountCharacters)) throw new Exception(lang('error_46',true));
 	
 	if(isset($_POST['submit'])) {
@@ -45,15 +45,23 @@ try {
 		
 		foreach($AccountCharacters as $thisCharacter) {
 			$characterData = $Character->CharacterData($thisCharacter);
-			$characterIMG = $Character->GenerateCharacterClassAvatar($characterData[_CLMN_CHR_CLASS_]);
+			if(!is_array($characterData)) continue;
+			$characterData_l = array_change_key_case($characterData, CASE_LOWER);
+			$rawClass = isset($characterData[_CLMN_CHR_CLASS_]) ? $characterData[_CLMN_CHR_CLASS_] : ($characterData['CharacterClassId'] ?? ($characterData_l['characterclassid'] ?? 0));
+			$legacyClassNum = 0;
+			if(is_numeric($rawClass)) { $legacyClassNum = (int)$rawClass; } else { if(function_exists('getOpenMUClassNumberById')) $legacyClassNum = getOpenMUClassNumberById($rawClass); }
+			$characterIMG = $Character->GenerateCharacterClassAvatar($legacyClassNum);
 			
 			echo '<form action="" method="post">';
-				echo '<input type="hidden" name="character" value="'.$characterData[_CLMN_CHR_NAME_].'"/>';
+				echo '<input type="hidden" name="character" value="'.($characterData[_CLMN_CHR_NAME_] ?? ($characterData['Name'] ?? ($characterData_l['name'] ?? ''))).'"/>';
 				echo '<tr>';
 					echo '<td>'.$characterIMG.'</td>';
-					echo '<td>'.$characterData[_CLMN_CHR_NAME_].'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_ZEN_]).'</td>';
-					echo '<td>'.returnPkLevel($characterData[_CLMN_CHR_PK_LEVEL_]).'</td>';
+					echo '<td>'.($characterData[_CLMN_CHR_NAME_] ?? ($characterData['Name'] ?? ($characterData_l['name'] ?? ''))).'</td>';
+					$charId = $characterData['Id'] ?? ($characterData_l['id'] ?? null);
+					$dispMoney = is_numeric($characterData[_CLMN_CHR_ZEN_] ?? null) ? (int)$characterData[_CLMN_CHR_ZEN_] : (function_exists('getOpenMUCharacterMoney') && $charId ? getOpenMUCharacterMoney($charId) : 0);
+					echo '<td>'.number_format($dispMoney).'</td>';
+					$pkCount = $characterData[_CLMN_CHR_PK_KILLS_] ?? ($characterData['PlayerKillCount'] ?? ($characterData_l['playerkillcount'] ?? 0));
+					echo '<td>'.returnPkLevel($pkCount).'</td>';
 					echo '<td><button name="submit" value="submit" class="btn btn-primary">'.lang('clearpk_txt_4',true).'</button></td>';
 				echo '</tr>';
 			echo '</form>';

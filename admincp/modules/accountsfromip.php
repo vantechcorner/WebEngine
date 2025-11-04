@@ -31,14 +31,22 @@ if(isset($_POST['ip_address'])) {
 				echo '<div class="panel-heading">Results:</div>';
 				echo '<div class="panel-body">';
 					
-					$searchdb = (config('SQL_USE_2_DB', true) == true ? $dB2 : $dB);
-					$membStatData = $searchdb->query_fetch("SELECT "._CLMN_MS_MEMBID_." FROM "._TBL_MS_." WHERE "._CLMN_MS_IP_." = ? GROUP BY "._CLMN_MS_MEMBID_."", array($_POST['ip_address']));
+					$searchdb = $dB;
+					// OpenMU does not store account IPs in Character; fallback to login attempts table
+					$ipLogRows = $searchdb->query_fetch("SELECT DISTINCT username FROM public.webengine_fla WHERE ip_address = ?", array($_POST['ip_address']));
+					$membStatData = array();
+					if(is_array($ipLogRows)) {
+						foreach($ipLogRows as $row) {
+							$acc = $searchdb->query_fetch_single("SELECT \"Id\" AS id FROM data.\"Account\" WHERE \"LoginName\" ILIKE ? LIMIT 1", array($row['username']));
+							if(is_array($acc) && isset($acc['id'])) $membStatData[] = array('AccountId' => $acc['id']);
+						}
+					}
 					if(is_array($membStatData)) {
 						echo '<table class="table table-no-border table-hover">';
 							foreach($membStatData as $membStatUser) {
 								echo '<tr>';
-									echo '<td>'.$membStatUser[_CLMN_MS_MEMBID_].'</td>';
-									echo '<td style="text-align:right;"><a href="'.admincp_base("accountinfo&id=".$common->retrieveUserID($membStatUser[_CLMN_MS_MEMBID_])).'" class="btn btn-xs btn-default">Account Information</a></td>';
+							echo '<td>'.$membStatUser['AccountId'].'</td>';
+							echo '<td style="text-align:right;"><a href="'.admincp_base("accountinfo&id=".$membStatUser['AccountId']).'" class="btn btn-xs btn-default">Account Information</a></td>';
 								echo '</tr>';
 							}
 							echo '</table>';

@@ -21,7 +21,8 @@ if($News->isNewsDirWritable()) {
 	
 	// Edit news process::
 	if(isset($_POST['news_submit'])) {
-		$News->editNews($_REQUEST['id'],$_POST['news_title'],$_POST['news_content'],$_POST['news_author'],0,$_POST['news_date']);
+		$category = isset($_POST['news_category']) ? trim($_POST['news_category']) : null;
+		$News->editNews($_REQUEST['id'],$_POST['news_title'],$_POST['news_content'],$_POST['news_author'],0,$_POST['news_date'],$category);
 		$News->cacheNews();
 		$News->updateNewsCacheIndex();
 		redirect(1, 'admincp/?module=managenews');
@@ -43,6 +44,10 @@ if($News->isNewsDirWritable()) {
 			<div class="form-group">
 				<label for="input_2">Author:</label>
 				<input type="text" class="form-control" id="input_2" name="news_author" value="<?php echo $editNews['news_author']; ?>"/>
+			</div>
+			<div class="form-group">
+				<label for="input_cat">Category (text):</label>
+				<input type="text" class="form-control" id="input_cat" name="news_category" value="<?php echo isset($editNews['category']) ? htmlspecialchars($editNews['category']) : ''; ?>"/>
 			</div>
 			<div class="form-group">
 				<label for="input_4">News Date:</label>

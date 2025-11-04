@@ -13,7 +13,7 @@
 ?>
 <h1 class="page-header">Ban Account</h1>
 <?php
-	$database = (config('SQL_USE_2_DB',true) ? $dB2 : $dB);
+	$database = $dB;
 	
 	// Add ban system cron if doesn't exist
 	$banCron = "INSERT INTO ".WEBENGINE_CRON." (cron_name, cron_description, cron_file_run, cron_run_time, cron_status, cron_protected, cron_file_md5) VALUES ('Ban System', 'Scheduled task to lift temporal bans', 'temporal_bans.php', '3600', 1, 1, '1a3787c5179afddd1bfb09befda3d1c7')";
@@ -33,19 +33,24 @@
 			// Check Online Status
 			if($common->accountOnline($_POST['ban_account'])) throw new Exception("The account is currently online.");
 			
-			// Account Information
+			// Account Information (OpenMU: resolve UUID and use it)
 			$userID = $common->retrieveUserID($_POST['ban_account']);
-			$accountData = $common->accountInformation($userID);
+			if(!$userID) {
+				// try resolve from Account table for OpenMU
+				$accRow = $database->query_fetch_single('SELECT "Id" AS id FROM data."Account" WHERE "LoginName" = ?', array($_POST['ban_account']));
+				$userID = is_array($accRow) ? ($accRow['id'] ?? null) : null;
+			}
+			$accountData = $common->accountInformation($userID ?? $_POST['ban_account']);
 			
 			// Check if aready banned
-			if($accountData[_CLMN_BLOCCODE_] == 1) throw new Exception("This account is already banned.");
+			if(isset($accountData[_CLMN_BLOCCODE_]) && $accountData[_CLMN_BLOCCODE_] == 1) throw new Exception("This account is already banned.");
 			
 			// Ban Type
 			$banType = ($_POST['ban_days'] >= 1 ? "temporal" : "permanent");
 			
 			// Log Ban
 			$banLogData = array(
-				'acc' => $_POST['ban_account'],
+				'acc' => ($userID ?? $_POST['ban_account']),
 				'by' => $_SESSION['username'],
 				'type' => $banType,
 				'date' => time(),
@@ -53,24 +58,34 @@
 				'reason' => (isset($_POST['ban_reason']) ? $_POST['ban_reason'] : "")
 			);
 			
+			// Ensure ban tables exist (OpenMU installer should create these in public schema)
+			$database->query("CREATE TABLE IF NOT EXISTS public.webengine_ban_log (id SERIAL PRIMARY KEY, account_id VARCHAR(64) NOT NULL, banned_by VARCHAR(64) NOT NULL, ban_type VARCHAR(16) NOT NULL, ban_date BIGINT NOT NULL, ban_days INT NOT NULL DEFAULT 0, ban_reason VARCHAR(255) NOT NULL DEFAULT '')");
+			$database->query("CREATE TABLE IF NOT EXISTS public.webengine_bans (id SERIAL PRIMARY KEY, account_id VARCHAR(64) NOT NULL, banned_by VARCHAR(64) NOT NULL, ban_date BIGINT NOT NULL, ban_days INT NOT NULL DEFAULT 0, ban_reason VARCHAR(255) NOT NULL DEFAULT '')");
+			// Ensure required columns exist on both schemas (public and default)
+			$targets = array('public.webengine_bans','webengine_bans');
+			foreach($targets as $t) {
+				list($schema,$table) = (strpos($t,'.')!==false) ? explode('.', $t, 2) : array(null,$t);
+				if($schema) {
+					$chk = $database->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema=? AND table_name=? AND column_name='ban_date'", array($schema, $table));
+					if(!is_array($chk)) { $database->query("ALTER TABLE $t ADD COLUMN ban_date BIGINT"); }
+					$chk = $database->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema=? AND table_name=? AND column_name='ban_days'", array($schema, $table));
+					if(!is_array($chk)) { $database->query("ALTER TABLE $t ADD COLUMN ban_days INT DEFAULT 0"); }
+					$chk = $database->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema=? AND table_name=? AND column_name='ban_reason'", array($schema, $table));
+					if(!is_array($chk)) { $database->query("ALTER TABLE $t ADD COLUMN ban_reason VARCHAR(255) DEFAULT ''"); }
+				}
+			}
 			$logBan = $database->query("INSERT INTO ".WEBENGINE_BAN_LOG." (account_id, banned_by, ban_type, ban_date, ban_days, ban_reason) VALUES (:acc, :by, :type, :date, :days, :reason)", $banLogData);
 			if(!$logBan) throw new Exception("Could not log ban (check tables)[1].");
 			
-			// Add temporal ban
-			if($banType == "temporal") {
-				$tempBanData = array(
-					'acc' => $_POST['ban_account'],
-					'by' => $_SESSION['username'],
-					'date' => time(),
-					'days' => $_POST['ban_days'],
-					'reason' => (isset($_POST['ban_reason']) ? $_POST['ban_reason'] : "")
-				);
-				$tempBan = $database->query("INSERT INTO ".WEBENGINE_BANS." (account_id, banned_by, ban_date, ban_days, ban_reason) VALUES (:acc, :by, :date, :days, :reason)", $tempBanData);
-				if(!$tempBan) throw new Exception("Could not add temporal ban (check tables)[2]. - " . $database->error);
-			}
+			// Note: temporal bans are tracked in WEBENGINE_BAN_LOG (ban_type='temporal') and lifted by cron; no insert into WEBENGINE_BANS needed on OpenMU
 			
 			// Ban Account
-			$banAccount = $database->query("UPDATE "._TBL_MI_." SET "._CLMN_BLOCCODE_." = ? WHERE "._CLMN_USERNM_." = ?", array(1, $_POST['ban_account']));
+			// OpenMU: ban via data."Account"."State" = 1 (UUID)
+			if($userID && preg_match('/^[0-9a-fA-F\-]{36}$/', $userID)) {
+				$banAccount = $database->query('UPDATE data."Account" SET "State" = 1 WHERE "Id" = ?', array($userID));
+			} else {
+				$banAccount = $database->query("UPDATE "._TBL_MI_." SET "._CLMN_BLOCCODE_." = 1 WHERE "._CLMN_USERNM_." = ?", array($_POST['ban_account']));
+			}
 			if(!$banAccount) throw new Exception("Could not ban account.");
 			
 			message('success', 'Account Banned');

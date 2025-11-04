@@ -50,7 +50,17 @@ if(isset($_POST['install_step_5_submit'])) {
 		$webengineDefaultConfig['SQL_SHA256_SALT'] = $_SESSION['install_sql_sha256_salt'];
 		$webengineDefaultConfig['webengine_cms_installed'] = true;
 		
-		# encode settings
+        // Optional: OpenMU Admin API URL and Game Server IP
+        if(isset($_POST['install_step_5_openmu_api_url'])) {
+            $apiUrl = trim($_POST['install_step_5_openmu_api_url']);
+            if(strlen($apiUrl) > 0) $webengineDefaultConfig['openmu_api_base_url'] = rtrim($apiUrl, '/');
+        }
+        if(isset($_POST['install_step_5_game_server_ip'])) {
+            $gameIp = trim($_POST['install_step_5_game_server_ip']);
+            if(strlen($gameIp) > 0) $webengineDefaultConfig['game_server_ip'] = $gameIp;
+        }
+
+        # encode settings
 		$newWebengineConfigs = json_encode($webengineDefaultConfig, JSON_PRETTY_PRINT);
 		if($newWebengineConfigs == false) throw new Exception('Could not encode WebEngine CMS configurations.');
 		
@@ -86,14 +96,31 @@ if(isset($_POST['install_step_5_submit'])) {
 	<div class="form-group">
 		<label class="col-sm-3 control-label">Server Files</label>
 		<div class="col-sm-9">
+			<?php $defaultServerFiles = isset($webengineDefaultConfig['server_files']) ? strtolower($webengineDefaultConfig['server_files']) : 'openmu'; ?>
 			<?php foreach($webengine['file_compatibility'] as $serverFileValue => $serverFileInfo) { ?>
 				<div class="radio">
 					<label>
-						<input type="radio" name="install_step_5_7" name="optionsRadios" value="<?php echo $serverFileValue; ?>">
+						<input type="radio" name="install_step_5_7" name="optionsRadios" value="<?php echo $serverFileValue; ?>" <?php echo ($serverFileValue === 'openmu' ? 'checked="checked"' : null); ?>>
 						<?php echo $serverFileInfo['name']; ?>
 					</label>
 				</div>
 			<?php } ?>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<label for="input_openmu_api" class="col-sm-3 control-label">OpenMU Admin Panel URL</label>
+		<div class="col-sm-9">
+			<input type="text" name="install_step_5_openmu_api_url" class="form-control" id="input_openmu_api" placeholder="http://localhost:5000" value="http://localhost:5000">
+			<p class="help-block">Base URL of your OpenMU Admin API (used for online users, etc.).</p>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<label for="input_game_ip" class="col-sm-3 control-label">Game Server IP</label>
+		<div class="col-sm-9">
+			<input type="text" name="install_step_5_game_server_ip" class="form-control" id="input_game_ip" placeholder="127.0.0.1" value="127.0.0.1">
+			<p class="help-block">IP of your game server. Used to detect server status on ports 55901/55902.</p>
 		</div>
 	</div>
 	

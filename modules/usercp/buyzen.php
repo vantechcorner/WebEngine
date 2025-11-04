@@ -26,7 +26,7 @@ try {
 	$common = new common();
 	
 	$Character = new Character();
-	$AccountCharacters = $Character->AccountCharacter($_SESSION['username']);
+	$AccountCharacters = $Character->AccountCharacter(isset($_SESSION['userid'])?$_SESSION['userid']:$_SESSION['username']);
 	if(!is_array($AccountCharacters)) throw new Exception(lang('error_46',true));
 	
 	# config file data
@@ -64,12 +64,15 @@ try {
 			if(!is_array($characterData)) throw new Exception(lang('error_25',true));
 			
 			# check zen
-			$charZen = $characterData[_CLMN_CHR_ZEN_];
+			$charId = $characterData['Id'] ?? ($characterData['id'] ?? null);
+			$charZen = is_numeric($characterData[_CLMN_CHR_ZEN_] ?? null) ? (int)$characterData[_CLMN_CHR_ZEN_] : (function_exists('getOpenMUCharacterMoney') && $charId ? getOpenMUCharacterMoney($charId) : 0);
 			if($charZen+$zen > $maxZen) throw new Exception(lang('error_55',true));
 			
 			# subtract credits
 			$creditSystem = new CreditSystem();
-			$creditSystem->setConfigId(mconfig('credit_config'));
+			$cfgId = mconfig('credit_config');
+			if(!is_numeric($cfgId) || (int)$cfgId === 0) $cfgId = 1; // fallback to virtual credits config
+			$creditSystem->setConfigId($cfgId);
 			$configSettings = $creditSystem->showConfigs(true);
 			switch($configSettings['config_user_col_id']) {
 				case 'userid':

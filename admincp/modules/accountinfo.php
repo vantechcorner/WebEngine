@@ -80,8 +80,9 @@ if(isset($_GET['id'])) {
 	
 		$accountInfo = $common->accountInformation($_GET['id']);
 		if(!$accountInfo) throw new Exception("Could not retrieve account information (invalid account).");
+		$accountInfo_l = array_change_key_case($accountInfo, CASE_LOWER);
 		
-		echo '<h1 class="page-header">Account Information: <small>'.$accountInfo[_CLMN_USERNM_].'</small></h1>';
+		echo '<h1 class="page-header">Account Information: <small>'.($accountInfo[_CLMN_USERNM_] ?? ($accountInfo_l['loginname'] ?? '')).'</small></h1>';
 		
 		echo '<div class="row">';
 			echo '<div class="col-md-6">';
@@ -92,19 +93,19 @@ if(isset($_GET['id'])) {
 					echo '<div class="panel-heading">General Information</div>';
 					echo '<div class="panel-body">';
 					
-						$isBanned = ($accountInfo[_CLMN_BLOCCODE_] == 0 ? '<span class="label label-success">Active</span>' : '<span class="label label-danger">Banned</span>');
+						$isBanned = ((isset($accountInfo[_CLMN_BLOCCODE_]) ? $accountInfo[_CLMN_BLOCCODE_] : ($accountInfo_l['state'] ?? 0)) == 0 ? '<span class="label label-success">Active</span>' : '<span class="label label-danger">Banned</span>');
 						echo '<table class="table table-no-border table-hover">';
 							echo '<tr>';
-								echo '<th>ID:</th>';
-								echo '<td>'.$accountInfo[_CLMN_MEMBID_].'</td>';
+						echo '<th>ID:</th>';
+						echo '<td>'.($accountInfo[_CLMN_MEMBID_] ?? ($accountInfo_l['id'] ?? '')).'</td>';
 							echo '</tr>';
 							echo '<tr>';
-								echo '<th>Username:</th>';
-								echo '<td>'.$accountInfo[_CLMN_USERNM_].'</td>';
+						echo '<th>Username:</th>';
+						echo '<td>'.($accountInfo[_CLMN_USERNM_] ?? ($accountInfo_l['loginname'] ?? '')).'</td>';
 							echo '</tr>';
 							echo '<tr>';
-								echo '<th>Email:</th>';
-								echo '<td>'.$accountInfo[_CLMN_EMAIL_].'</td>';
+						echo '<th>Email:</th>';
+						echo '<td>'.($accountInfo[_CLMN_EMAIL_] ?? ($accountInfo_l['email'] ?? '')).'</td>';
 							echo '</tr>';
 							
 							if(strtolower(config('server_files',true)) == 'mue') {
@@ -133,13 +134,13 @@ if(isset($_GET['id'])) {
 				
 				if($accountInfoConfig['showStatusInfo']) {
 					// ACCOUNT STATUS
-					$statusdb = (config('SQL_USE_2_DB', true) == true ? $dB2 : $dB);
-					$statusData = $statusdb->query_fetch_single("SELECT * FROM "._TBL_MS_." WHERE "._CLMN_MS_MEMBID_." = ?", array($accountInfo[_CLMN_USERNM_]));
+					$statusdb = $dB;
+					$statusData = $statusdb->query_fetch_single("SELECT COUNT(*) AS cnt FROM data.\"Character\" WHERE \"AccountId\" = ? AND \"State\" > 0", array($accountInfo_l['id'] ?? $accountInfo[_CLMN_MEMBID_]));
 					echo '<div class="panel panel-info">';
 					echo '<div class="panel-heading">Status Information</div>';
 					echo '<div class="panel-body">';
 						if(is_array($statusData)) {
-							$onlineStatus = ($statusData[_CLMN_CONNSTAT_] == 1 ? '<span class="label label-success">Online</span>' : '<span class="label label-danger">Offline</span>');
+						$onlineStatus = ((int)($statusData['cnt'] ?? 0) > 0 ? '<span class="label label-success">Online</span>' : '<span class="label label-danger">Offline</span>');
 							echo '<table class="table table-no-border table-hover">';
 								echo '<tr>';
 									echo '<td>Status:</td>';
@@ -160,7 +161,7 @@ if(isset($_GET['id'])) {
 				if($accountInfoConfig['showCharacters']) {
 					// ACCOUNT CHARACTERS
 					$Character = new Character();
-					$accountCharacters = $Character->AccountCharacter($accountInfo[_CLMN_USERNM_]);
+					$accountCharacters = $Character->AccountCharacter($accountInfo_l['id'] ?? $accountInfo[_CLMN_MEMBID_]);
 					echo '<div class="panel panel-default">';
 					echo '<div class="panel-heading">Characters</div>';
 					echo '<div class="panel-body">';

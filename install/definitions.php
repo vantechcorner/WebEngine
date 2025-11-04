@@ -34,9 +34,10 @@ define('WEBENGINE_WRITABLE_PATHS_FILE', 'writable.paths.json');
 define('WEBENGINE_DEFAULT_CONFIGURATION_FILE', 'webengine.json.default');
 
 $install['PDO_DSN'] = array(
-	1 => 'dblib',
-	2 => 'sqlsrv',
-	3 => 'odbc',
+    1 => 'dblib',
+    2 => 'sqlsrv',
+    3 => 'odbc',
+    4 => 'pgsql',
 );
 
 $install['sql_list'] = array(
@@ -92,5 +93,6 @@ $install['PDO_PWD_ENCRYPT'] = array(
 	'none',
 	'wzmd5',
 	'phpmd5',
-	'sha256',
+    'sha256',
+    'bcrypt',
 );

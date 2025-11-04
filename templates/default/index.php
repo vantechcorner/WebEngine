@@ -21,7 +21,22 @@ if(is_array($serverInfoCache)) {
 
 $maxOnline = config('maximum_online', true);
 $onlinePlayers = isset($srvInfo[3]) ? $srvInfo[3] : 0;
-$onlinePlayersPercent = check_value($maxOnline) ? $onlinePlayers*100/$maxOnline : 0;
+
+// Prefer OpenMU Admin API for online users if available
+if(function_exists('openMuApiOnlinePlayersCount')) {
+	$apiCount = openMuApiOnlinePlayersCount();
+	if(is_int($apiCount) && $apiCount >= 0) { $onlinePlayers = $apiCount; }
+}
+
+// Make bar feel fuller by slightly reducing the effective max (e.g., 80% of configured)
+$effectiveMax = check_value($maxOnline) ? max(1, floor($maxOnline * 0.8)) : 0;
+$onlinePlayersPercent = ($effectiveMax > 0) ? min(100, ($onlinePlayers*100/$effectiveMax)) : 0;
+
+// Game server status
+$serverOnline = null;
+if(function_exists('isGameServerOnline')) {
+    $serverOnline = isGameServerOnline();
+}
 
 if(!isset($_REQUEST['page'])) {
 	$_REQUEST['page'] = '';
@@ -92,6 +107,16 @@ if(!isset($_REQUEST['subpage'])) {
 			<div class="row">
 				<div class="col-xs-12">
 					<div class="col-xs-12 header-info-block">
+						<?php if($serverOnline !== null) { ?>
+						<div class="row">
+							<div class="col-xs-6 text-left">
+								Server Status:
+							</div>
+							<div class="col-xs-6 text-right">
+								<span class="server-status <?php echo $serverOnline ? 'server-status-online' : 'server-status-offline'; ?>"><?php echo $serverOnline ? 'Online' : 'Offline'; ?></span>
+							</div>
+						</div>
+						<?php } ?>
 						<?php if(check_value(config('maximum_online', true))) { ?>
 						<div class="row">
 							<div class="col-xs-6 text-left">

@@ -18,11 +18,12 @@ echo '<div class="page-title"><span>'.lang('module_titles_txt_25').'</span></div
 try {
 	
 	if(!mconfig('active')) throw new Exception(lang('error_47',true));
-	if(!is_array($custom['character_cmd'])) throw new Exception(lang('error_59',true));
+	if(!isset($custom) || !is_array($custom)) $custom = array();
+	if(!array_key_exists('character_cmd', $custom) || !is_array($custom['character_cmd'])) $custom['character_cmd'] = array(64,66,70);
 	$maxStats = mconfig('addstats_max_stats');
 	
 	$Character = new Character();
-	$AccountCharacters = $Character->AccountCharacter($_SESSION['username']);
+	$AccountCharacters = $Character->AccountCharacter(isset($_SESSION['userid'])?$_SESSION['userid']:$_SESSION['username']);
 	if(!is_array($AccountCharacters)) throw new Exception(lang('error_46',true));
 	
 	if(isset($_POST['submit'])) {
@@ -44,7 +45,16 @@ try {
 	
 	foreach($AccountCharacters as $thisCharacter) {
 		$characterData = $Character->CharacterData($thisCharacter);
-		$characterIMG = $Character->GenerateCharacterClassAvatar($characterData[_CLMN_CHR_CLASS_]);
+		if(!is_array($characterData)) continue;
+		$characterData_l = array_change_key_case($characterData, CASE_LOWER);
+		$rawClass = isset($characterData[_CLMN_CHR_CLASS_]) ? $characterData[_CLMN_CHR_CLASS_] : ($characterData['CharacterClassId'] ?? ($characterData_l['characterclassid'] ?? 0));
+		$legacyClassNum = 0;
+		if(is_numeric($rawClass)) { $legacyClassNum = (int)$rawClass; } else { if(function_exists('getOpenMUClassNumberById')) $legacyClassNum = getOpenMUClassNumberById($rawClass); }
+		$characterIMG = $Character->GenerateCharacterClassAvatar($legacyClassNum);
+		$charId = $characterData['Id'] ?? ($characterData_l['id'] ?? null);
+		$charName = $characterData[_CLMN_CHR_NAME_] ?? ($characterData['Name'] ?? ($characterData_l['name'] ?? ''));
+		$lvlupPoints = $characterData[_CLMN_CHR_LVLUP_POINT_] ?? ($characterData['LevelUpPoints'] ?? ($characterData_l['leveluppoints'] ?? 0));
+		$stats = function_exists('getOpenMUCharacterStats') && $charId ? getOpenMUCharacterStats($charId) : array();
 		
 		echo '<div class="panel panel-addstats">';
 			echo '<div class="panel-body">';
@@ -53,47 +63,47 @@ try {
 				echo '</div>';
 				echo '<div class="col-xs-9 nopadding">';
 					echo '<div class="col-xs-12 nopadding character-name">';
-						echo $characterData[_CLMN_CHR_NAME_];
+					echo $charName;
 					echo '</div>';
 					echo '<div class="col-sm-10">';
 						echo '<form class="form-horizontal" action="" method="post">';
 							
-							echo '<input type="hidden" name="character" value="'.$characterData[_CLMN_CHR_NAME_].'"/>';
+					echo '<input type="hidden" name="character" value="'.$charName.'"/>';
 							
 							echo '<div class="form-group">';
 								echo '<label for="inputStat" class="col-sm-5 control-label"></label>';
 								echo '<div class="col-sm-7">';
-									echo langf('addstats_txt_2', array(number_format($characterData[_CLMN_CHR_LVLUP_POINT_])));
+						echo langf('addstats_txt_2', array(number_format($lvlupPoints)));
 								echo '</div>';
 							echo '</div>';
 							echo '<div class="form-group">';
-								echo '<label for="inputStat1" class="col-sm-5 control-label">'.lang('addstats_txt_3',true).' ('.$characterData[_CLMN_CHR_STAT_STR_].')</label>';
+						echo '<label for="inputStat1" class="col-sm-5 control-label">'.lang('addstats_txt_3',true).' ('.number_format($stats['Strength'] ?? ($characterData[_CLMN_CHR_STAT_STR_] ?? 0)).')</label>';
 								echo '<div class="col-sm-7">';
 									echo '<input type="number" class="form-control" id="inputStat1" min="1" step="1" max="'.$maxStats.'" name="add_str" placeholder="0">';
 								echo '</div>';
 							echo '</div>';
 							echo '<div class="form-group">';
-								echo '<label for="inputStat2" class="col-sm-5 control-label">'.lang('addstats_txt_4',true).' ('.$characterData[_CLMN_CHR_STAT_AGI_].')</label>';
+						echo '<label for="inputStat2" class="col-sm-5 control-label">'.lang('addstats_txt_4',true).' ('.number_format($stats['Agility'] ?? ($characterData[_CLMN_CHR_STAT_AGI_] ?? 0)).')</label>';
 								echo '<div class="col-sm-7">';
 									echo '<input type="number" class="form-control" id="inputStat2" min="1" step="1" max="'.$maxStats.'" name="add_agi" placeholder="0">';
 								echo '</div>';
 							echo '</div>';
 							echo '<div class="form-group">';
-								echo '<label for="inputStat3" class="col-sm-5 control-label">'.lang('addstats_txt_5',true).' ('.$characterData[_CLMN_CHR_STAT_VIT_].')</label>';
+						echo '<label for="inputStat3" class="col-sm-5 control-label">'.lang('addstats_txt_5',true).' ('.number_format($stats['Vitality'] ?? ($characterData[_CLMN_CHR_STAT_VIT_] ?? 0)).')</label>';
 								echo '<div class="col-sm-7">';
 									echo '<input type="number" class="form-control" id="inputStat3" min="1" step="1" max="'.$maxStats.'" name="add_vit" placeholder="0">';
 								echo '</div>';
 							echo '</div>';
 							echo '<div class="form-group">';
-								echo '<label for="inputStat4" class="col-sm-5 control-label">'.lang('addstats_txt_6',true).' ('.$characterData[_CLMN_CHR_STAT_ENE_].')</label>';
+						echo '<label for="inputStat4" class="col-sm-5 control-label">'.lang('addstats_txt_6',true).' ('.number_format($stats['Energy'] ?? ($characterData[_CLMN_CHR_STAT_ENE_] ?? 0)).')</label>';
 								echo '<div class="col-sm-7">';
 									echo '<input type="number" class="form-control" id="inputStat4" min="1" step="1" max="'.$maxStats.'" name="add_ene" placeholder="0">';
 								echo '</div>';
 							echo '</div>';
 							
-							if(in_array($characterData[_CLMN_CHR_CLASS_], $custom['character_cmd'])) {
+						if(in_array($legacyClassNum, $custom['character_cmd'])) {
 								echo '<div class="form-group">';
-									echo '<label for="inputStat5" class="col-sm-5 control-label">'.lang('addstats_txt_7',true).' ('.$characterData[_CLMN_CHR_STAT_CMD_].')</label>';
+								echo '<label for="inputStat5" class="col-sm-5 control-label">'.lang('addstats_txt_7',true).' ('.number_format($stats['Leadership'] ?? ($characterData[_CLMN_CHR_STAT_CMD_] ?? 0)).')</label>';
 									echo '<div class="col-sm-7">';
 										echo '<input type="number" class="form-control" id="inputStat5" min="1" step="1" max="'.$maxStats.'" name="add_com" placeholder="0">';
 									echo '</div>';

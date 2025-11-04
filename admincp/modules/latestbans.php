@@ -20,19 +20,24 @@
 			if(!Validator::UnsignedNumber($_GET['liftban'])) throw new Exception("Invalid ban id.");
 			
 			// Retrieve Ban Information
-			$banInfo = $database->query_fetch_single("SELECT * FROM ".WEBENGINE_BAN_LOG." WHERE id = ?", array($_GET['liftban']));
+				$banInfo = $database->query_fetch_single("SELECT * FROM ".WEBENGINE_BAN_LOG." WHERE id = ?", array($_GET['liftban']));
 			if(!is_array($banInfo)) throw new Exception("Ban ID does not exist.");
 			
 			// Check account status
 			//if($common->accountOnline($banInfo['account_id'])) throw new Exception("The account is online.");
 			
 			// Unban Account
-			$unban = $database->query("UPDATE "._TBL_MI_." SET "._CLMN_BLOCCODE_." = 0 WHERE "._CLMN_USERNM_." = ?", array($banInfo['account_id']));
+				// If account_id looks like UUID, unban via OpenMU Account.State
+				if(preg_match('/^[0-9a-fA-F\-]{36}$/', $banInfo['account_id'])) {
+					$unban = $database->query('UPDATE data."Account" SET "State" = 0 WHERE "Id" = ?', array($banInfo['account_id']));
+				} else {
+					$unban = $database->query("UPDATE "._TBL_MI_." SET "._CLMN_BLOCCODE_." = 0 WHERE "._CLMN_USERNM_." = ?", array($banInfo['account_id']));
+				}
 			if(!$unban) throw new Exception("Could not update account information (unban).");
 			
 			// Remove Ban log
-			$database->query("DELETE FROM ".WEBENGINE_BAN_LOG." WHERE account_id = ?", array($banInfo['account_id']));
-			$database->query("DELETE FROM ".WEBENGINE_BANS." WHERE account_id = ?", array($banInfo['account_id']));
+				$database->query("DELETE FROM ".WEBENGINE_BAN_LOG." WHERE account_id = ?", array($banInfo['account_id']));
+				$database->query("DELETE FROM ".WEBENGINE_BANS." WHERE account_id = ?", array($banInfo['account_id']));
 			
 			message('success', 'Account ban lifted');
 		} catch(Exception $ex) {
@@ -55,7 +60,7 @@
 			<div class="tab-content">
 				<div class="tab-pane fade active in" id="temp"><br />
 				<?php
-					$tBans = $database->query_fetch("SELECT TOP 25 * FROM ".WEBENGINE_BAN_LOG." WHERE ban_type = ? ORDER BY id DESC", array("temporal"));
+					$tBans = $database->query_fetch("SELECT * FROM ".WEBENGINE_BAN_LOG." WHERE ban_type = ? ORDER BY id DESC LIMIT 25", array("temporal"));
 					if(is_array($tBans)) {
 						echo '<table class="table table-condensed">';
 							echo '<thead>';
@@ -71,8 +76,8 @@
 							echo '<tbody>';
 							foreach($tBans as $temporalBan) {
 								echo '<tr>';
-									echo '<td>'.$temporalBan['account_id'].'</td>';
-									echo '<td>'.$temporalBan['banned_by'].'</td>';
+								echo '<td><a href="'.admincp_base('accountinfo&id='.$temporalBan['account_id']).'">'.$temporalBan['account_id'].'</a></td>';
+								echo '<td>'.htmlspecialchars($temporalBan['banned_by']).'</td>';
 									echo '<td>'.date("Y-m-d H:i", $temporalBan['ban_date']).'</td>';
 									echo '<td>'.$temporalBan['ban_days'].'</td>';
 									echo '<td>'.$temporalBan['ban_reason'].'</td>';
@@ -88,7 +93,7 @@
 				</div>
 				<div class="tab-pane fade" id="perm"><br />
 				<?php
-					$pBans = $database->query_fetch("SELECT TOP 25 * FROM ".WEBENGINE_BAN_LOG." WHERE ban_type = ? ORDER BY id DESC", array("permanent"));
+					$pBans = $database->query_fetch("SELECT * FROM ".WEBENGINE_BAN_LOG." WHERE ban_type = ? ORDER BY id DESC LIMIT 25", array("permanent"));
 					if(is_array($pBans)) {
 						echo '<table class="table table-condensed">';
 							echo '<thead>';
@@ -103,8 +108,8 @@
 							echo '<tbody>';
 							foreach($pBans as $permanentBan) {
 								echo '<tr>';
-									echo '<td>'.$permanentBan['account_id'].'</td>';
-									echo '<td>'.$permanentBan['banned_by'].'</td>';
+								echo '<td><a href="'.admincp_base('accountinfo&id='.$permanentBan['account_id']).'">'.$permanentBan['account_id'].'</a></td>';
+								echo '<td>'.htmlspecialchars($permanentBan['banned_by']).'</td>';
 									echo '<td>'.date("Y-m-d H:i", $permanentBan['ban_date']).'</td>';
 									echo '<td>'.$permanentBan['ban_reason'].'</td>';
 									echo '<td style="text-align:right;"><a href="index.php?module='.$_REQUEST['module'].'&liftban='.$permanentBan['id'].'" class="btn btn-danger btn-xs">Lift Ban</a></td>';

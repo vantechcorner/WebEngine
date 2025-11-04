@@ -18,6 +18,13 @@ class Account extends common {
 	
 	protected $_account;
 	protected $_country;
+
+	private function _generateUuidV4() {
+		$bytes = random_bytes(16);
+		$bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+		$bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+		return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+	}
 	
 	public function setAccount($account) {
 		$this->_account = $account;
@@ -64,34 +71,41 @@ class Account extends common {
 			return;
 		}
 		
-		# insert data
-		$data = array(
-			'username' => $username,
-			'password' => $password,
-			'name' => $username,
-			'serial' => $this->_defaultAccountSerial,
-			'email' => $email
-		);
-		
-		# query
-		switch($this->_passwordEncryption) {
-			case 'wzmd5':
-				$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, [dbo].[fn_md5](:password, :username), :name, :serial, :email, 0, 0)";
-				break;
-			case 'phpmd5':
-				$data['password'] = md5($password);
-				$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, :password, :name, :serial, :email, 0, 0)";
-				break;
-			case 'sha256':
-				$data['password'] = '0x' . hash('sha256', $password . $username . $this->_sha256salt);
-				$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, CONVERT(binary(32),:password,1), :name, :serial, :email, 0, 0)";
-				break;
-			default:
-				$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, :password, :name, :serial, :email, 0, 0)";
+		// OpenMU-specific registration (PostgreSQL, bcrypt, UUID)
+		if(strtolower($this->_serverFiles) == 'openmu') {
+			$db = $this->muonline;
+			$uuid = $this->_generateUuidV4();
+			$bcrypt = password_hash($password, PASSWORD_BCRYPT, ['cost' => 11]);
+			$insert = "INSERT INTO "._TBL_ACCOUNT_." ("._CLMN_ACCOUNT_ID_.", "._CLMN_ACCOUNT_LOGIN_.", "._CLMN_ACCOUNT_PASSWORD_.", "._CLMN_ACCOUNT_EMAIL_.", "._CLMN_ACCOUNT_STATE_.", "._CLMN_ACCOUNT_TIMEZONE_.", "._CLMN_ACCOUNT_SECURITY_CODE_.", "._CLMN_ACCOUNT_VAULT_PASSWORD_.", "._CLMN_ACCOUNT_VAULT_EXTENDED_.", "._CLMN_ACCOUNT_REGISTRATION_DATE_.") VALUES (?, ?, ?, ?, 0, 0, '', '', false, NOW())";
+			$result = $db->query($insert, array($uuid, $username, $bcrypt, $email));
+		} else {
+			# insert data
+			$data = array(
+				'username' => $username,
+				'password' => $password,
+				'name' => $username,
+				'serial' => $this->_defaultAccountSerial,
+				'email' => $email
+			);
+			# query
+			switch($this->_passwordEncryption) {
+				case 'wzmd5':
+					$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, [dbo].[fn_md5](:password, :username), :name, :serial, :email, 0, 0)";
+					break;
+				case 'phpmd5':
+					$data['password'] = md5($password);
+					$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, :password, :name, :serial, :email, 0, 0)";
+					break;
+				case 'sha256':
+					$data['password'] = '0x' . hash('sha256', $password . $username . $this->_sha256salt);
+					$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, CONVERT(binary(32),:password,1), :name, :serial, :email, 0, 0)";
+					break;
+				default:
+					$query = "INSERT INTO "._TBL_MI_." ("._CLMN_USERNM_.", "._CLMN_PASSWD_.", "._CLMN_MEMBNAME_.", "._CLMN_SNONUMBER_.", "._CLMN_EMAIL_.", "._CLMN_BLOCCODE_.", "._CLMN_CTLCODE_.") VALUES (:username, :password, :name, :serial, :email, 0, 0)";
+			}
+			# register account
+			$result = $this->memuonline->query($query, $data);
 		}
-		
-		# register account
-		$result = $this->memuonline->query($query, $data);
 		if(!$result) throw new Exception(lang('error_22',true));
 		
 		# old season support
@@ -107,11 +121,10 @@ class Account extends common {
 		# success message
 		message('success', lang('success_1',true));
 		
-		
 		if($regCfg['automatic_login']) {
 			// automatic log-in
 			try {
-				$userLogin = new login();
+				$userLogin = (strtolower($this->_serverFiles) == 'openmu') ? new LoginOpenMU() : new login();
 				$userLogin->validateLogin($username, $password);
 			} catch(Exception $ex) {
 				redirect(1,'login/');

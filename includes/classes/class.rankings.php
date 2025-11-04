@@ -12,37 +12,31 @@
  */
 
 class Rankings {
-	
-	private $_results;
-	private $_excludedCharacters = array('');
-	private $_excludedGuilds = array('');
-	private $_rankingsMenu;
-	
+
+	protected $_results;
+	protected $_excludedCharacters = array();
+	protected $_excludedGuilds = array();
+	protected $_rankingsMenu;
+
 	protected $config;
 	protected $serverFiles;
 	protected $mu;
 	protected $me;
-	
+
 	function __construct() {
-		
-		// webengine configs
 		$this->config = webengineConfigs();
 		$this->serverFiles = strtolower($this->config['server_files']);
-		
-		// rankings configs
 		loadModuleConfigs('rankings');
 		$this->_results = (check_value(mconfig('rankings_results')) ? mconfig('rankings_results') : 25);
-		
-		// excluded characters
-		if(check_value(mconfig('rankings_excluded_characters'))) {
-			$excludedCharacters = explode(",", mconfig('rankings_excluded_characters'));
-			$this->_excludedCharacters = $excludedCharacters;
+
+		$excludedCharactersCfg = mconfig('rankings_excluded_characters');
+		if(check_value($excludedCharactersCfg)) {
+			$this->_excludedCharacters = array_map('trim', explode(",", $excludedCharactersCfg));
 		}
-		
-		// excluded guilds
-		if(check_value(mconfig('rankings_excluded_guilds'))) {
-			$excludedGuilds = explode(",", mconfig('rankings_excluded_guilds'));
-			$this->_excludedGuilds = $excludedGuilds;
+
+		$excludedGuildsCfg = mconfig('rankings_excluded_guilds');
+		if(check_value($excludedGuildsCfg)) {
+			$this->_excludedGuilds = array_map('trim', explode(",", $excludedGuildsCfg));
 		}
 		
 		// rankings menu

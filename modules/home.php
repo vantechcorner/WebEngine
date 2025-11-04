@@ -43,9 +43,13 @@
 							$news_url = __BASE_URL__.'news/'.$newsArticle['news_id'].'/';
 							
 							echo '<div class="row home-news-block-article">';
-								echo '<div class="col-xs-3">';
-									echo '<span class="home-news-block-article-type">'.lang('news_txt_6').'</span>';
-								echo '</div>';
+                                echo '<div class="col-xs-3">';
+                                    $cat = isset($newsArticle['category']) && $newsArticle['category'] ? $newsArticle['category'] : '';
+                                    if($cat !== '') {
+                                        $catUrl = __BASE_URL__.'news/?category='.urlencode($cat);
+                                        echo '<span class="home-news-block-article-type"><a href="'.$catUrl.'" style="color:inherit; text-decoration:none;">'.htmlspecialchars($cat).'</a></span>';
+                                    }
+                                echo '</div>';
 								echo '<div class="col-xs-6 home-news-block-article-title-container">';
 									echo '<span class="home-news-block-article-title"><a href="'.$news_url.'">'.$news_title.'</a></span>';
 								echo '</div>';

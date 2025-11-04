@@ -13,7 +13,7 @@
 
 session_name('WebEngine126'); # session name (change to your server name and uncomment)
 //session_set_cookie_params(0, '/', 'muonline.com'); # same session with and without www protocol (edit with your domain and uncomment)
-if(access != 'cron') {
+if(!defined('access') || access != 'cron') {
 	@ob_start();
 	session_start();
 }
@@ -116,6 +116,22 @@ if(!@include_once(__PATH_INCLUDES__ . 'functions.php')) throw new Exception('Cou
 # WebEngine Configurations
 $config = webengineConfigs();
 
+# Load OpenMU specific classes if using OpenMU
+if(strtolower($config['server_files']) == 'openmu') {
+	if(!@include_once(__PATH_CONFIGS__ . 'openmu.tables.php')) throw new Exception('Could not load OpenMU table definitions.');
+	if(!@include_once(__PATH_FUNCTIONS__ . 'openmu.php')) throw new Exception('Could not load OpenMU functions.');
+	if(!@include_once(__PATH_CLASSES__ . 'class.login.openmu.php')) throw new Exception('Could not load class (login.openmu).');
+	if(!@include_once(__PATH_CLASSES__ . 'class.rankings.openmu.php')) throw new Exception('Could not load class (rankings.openmu).');
+	
+    # Force WebEngine to use OpenMU classes (only if base classes not already declared)
+    if(!class_exists('login', false)) {
+        class_alias('LoginOpenMU', 'login');
+    }
+    if(!class_exists('Rankings', false)) {
+        class_alias('RankingsOpenMU', 'Rankings');
+    }
+}
+
 # Installation Status
 if($config['webengine_cms_installed'] == false) {
 	header('Location: '.__BASE_URL__.'install/');
@@ -151,7 +167,7 @@ if($checkConfigs) {
 if(!@include_once(__PATH_CONFIGS__ . $webengine['file_compatibility'][strtolower($config['server_files'])]['file'])) throw new Exception('Could not load the table definitions.');
 
 # CMS Status
-if(!$config['system_active'] && access != 'cron') {
+if(!$config['system_active'] && (!defined('access') || access != 'cron')) {
 	if(!array_key_exists($_SESSION['username'], $config['admins'])) {
 		header('Location: ' . $config['maintenance_page']);
 		die();

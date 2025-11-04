@@ -23,14 +23,48 @@ class News {
 	private $_content;
 	
 	protected $db;
+	private $_useOpenMuNews = null;
+    private $_hasCategory = null;
 	
 	function __construct() {
 		
 		$config = loadConfigurations($this->_configFile);
 		$this->_enableShortNews = $config['news_short'];
 		$this->_shortNewsCharLimit = $config['news_short_char_limit'];
+		$this->db = Connection::Database('MuOnline');
 		
 	}
+
+	private function useOpenMuNews() {
+		if($this->_useOpenMuNews !== null) return $this->_useOpenMuNews;
+		$exists = $this->db->query_fetch_single("SELECT 1 FROM information_schema.tables WHERE table_schema = 'data' AND table_name = 'webengine_news' LIMIT 1");
+		$this->_useOpenMuNews = is_array($exists) ? true : false;
+		return $this->_useOpenMuNews;
+	}
+
+    private function hasCategoryColumn() {
+        if($this->_hasCategory !== null) return $this->_hasCategory;
+        if(!$this->useOpenMuNews()) { $this->_hasCategory = false; return false; }
+        $chk = $this->db->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema='data' AND table_name='webengine_news' AND column_name='category'");
+        $this->_hasCategory = is_array($chk) ? true : false;
+        return $this->_hasCategory;
+    }
+
+    private function ensureOpenMuNewsTranslations() {
+        if(!$this->useOpenMuNews()) return;
+        // Create translations table if missing
+        $this->db->query(
+            "CREATE TABLE IF NOT EXISTS data.webengine_news_translations (\n".
+            "    id SERIAL PRIMARY KEY,\n".
+            "    news_id INTEGER NOT NULL REFERENCES data.webengine_news(id) ON DELETE CASCADE,\n".
+            "    news_language VARCHAR(10) NOT NULL,\n".
+            "    news_title TEXT,\n".
+            "    news_content TEXT\n".
+            ")"
+        );
+        // Optional: legacy view for code referencing WEBENGINE_NEWS_TRANSLATIONS
+        $this->db->query("CREATE OR REPLACE VIEW public.\"WEBENGINE_NEWS_TRANSLATIONS\" AS SELECT * FROM data.webengine_news_translations");
+    }
 	
 	public function setId($id) {
 		if(!Validator::UnsignedNumber($id)) return;
@@ -55,8 +89,7 @@ class News {
 		$this->_content = $content;
 	}
 	
-	function addNews($title,$content,$author='Administrator',$comments=1) {
-		$this->db = Connection::Database('Me_MuOnline');
+    function addNews($title,$content,$author='Administrator',$comments=1,$category=null) {
 		if(check_value($title) && check_value($content) && check_value($author)) {
 			if($this->checkTitle($title)) {
 				if($this->checkContent($content)) {
@@ -65,17 +98,24 @@ class News {
 						$comments = 1;
 					}
 				
-					// collect data
-					$news_data = array(
-						base64_encode($title),
-						$author,
-						time(),
-						base64_encode($content),
-						$comments
-					);
-					
-					// add news
-					$add_news = $this->db->query("INSERT INTO ".WEBENGINE_NEWS." (news_title,news_author,news_date,news_content,allow_comments) VALUES (?,?,?,?,?)", $news_data);
+                    if($this->useOpenMuNews()) {
+                        // ensure category column exists (migrate older installs)
+                        $chk = $this->db->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema='data' AND table_name='webengine_news' AND column_name='category'");
+                        if(!is_array($chk)) { $this->db->query("ALTER TABLE data.webengine_news ADD COLUMN category VARCHAR(64)"); }
+                        $add_news = $this->db->query(
+                            "INSERT INTO data.webengine_news (title, category, author, content, created_at, allow_comments, published, views) VALUES (?, ?, ?, ?, NOW(), ?, true, 0)",
+                            array(base64_encode($title), ($category ?? null), $author, base64_encode($content), $comments)
+                        );
+					} else {
+						$news_data = array(
+							base64_encode($title),
+							$author,
+							time(),
+							base64_encode($content),
+							$comments
+						);
+						$add_news = $this->db->query("INSERT INTO ".WEBENGINE_NEWS." (news_title,news_author,news_date,news_content,allow_comments) VALUES (?,?,?,?,?)", $news_data);
+					}
 					
 					if($add_news) {
 						// success message
@@ -96,10 +136,13 @@ class News {
 	}
 	
 	function removeNews($id) {
-		$this->db = Connection::Database('Me_MuOnline');
 		if(Validator::Number($id)) {
 			if($this->newsIdExists($id)) {
-				$remove = $this->db->query("DELETE FROM ".WEBENGINE_NEWS." WHERE news_id = ?", array($id));
+				if($this->useOpenMuNews()) {
+					$remove = $this->db->query("DELETE FROM data.webengine_news WHERE id = ?", array($id));
+				} else {
+					$remove = $this->db->query("DELETE FROM ".WEBENGINE_NEWS." WHERE news_id = ?", array($id));
+				}
 				if($remove) {
 					
 					$this->setId($id);
@@ -117,20 +160,27 @@ class News {
 		}
 	}
 	
-	function editNews($id,$title,$content,$author,$comments,$date) {
-		$this->db = Connection::Database('Me_MuOnline');
+    function editNews($id,$title,$content,$author,$comments,$date,$category=null) {
 		if(check_value($id) && check_value($title) && check_value($content) && check_value($author) && check_value($comments) && check_value($date)) {
 			if(!$this->newsIdExists($id)) { return false; }
 			if($this->checkTitle($title) && $this->checkContent($content)) {
-				$editData = array(
-					base64_encode($title),
-					base64_encode($content),
-					$author,
-					strtotime($date),
-					$comments,
-					$id
-				);
-				$query = $this->db->query("UPDATE ".WEBENGINE_NEWS." SET news_title = ?, news_content = ?, news_author = ?, news_date = ?, allow_comments = ? WHERE news_id = ?", $editData);
+                if($this->useOpenMuNews()) {
+                    // ensure category column exists
+                    $chk = $this->db->query_fetch_single("SELECT 1 FROM information_schema.columns WHERE table_schema='data' AND table_name='webengine_news' AND column_name='category'");
+                    if(!is_array($chk)) { $this->db->query("ALTER TABLE data.webengine_news ADD COLUMN category VARCHAR(64)"); }
+                    $editData = array(base64_encode($title), base64_encode($content), $author, $comments, $category, $id);
+                    $query = $this->db->query("UPDATE data.webengine_news SET title = ?, content = ?, author = ?, allow_comments = ?, category = ? WHERE id = ?", $editData);
+				} else {
+					$editData = array(
+						base64_encode($title),
+						base64_encode($content),
+						$author,
+						strtotime($date),
+						$comments,
+						$id
+					);
+					$query = $this->db->query("UPDATE ".WEBENGINE_NEWS." SET news_title = ?, news_content = ?, news_author = ?, news_date = ?, allow_comments = ? WHERE news_id = ?", $editData);
+				}
 				if($query) {
 					message('success', 'News successfully edited.');
 				} else {
@@ -164,9 +214,14 @@ class News {
 		}
 	}
 	
-	function retrieveNews() {
-		$this->db = Connection::Database('Me_MuOnline');
-		$news = $this->db->query_fetch("SELECT * FROM ".WEBENGINE_NEWS." ORDER BY news_id DESC");
+    function retrieveNews() {
+		if($this->useOpenMuNews()) {
+            // include category when present, else return NULL as category
+            $catSel = $this->hasCategoryColumn() ? 'category' : 'NULL::varchar AS category';
+            $news = $this->db->query_fetch("SELECT id AS news_id, title AS news_title, ".$catSel.", author AS news_author, EXTRACT(EPOCH FROM created_at)::bigint AS news_date, allow_comments, content AS news_content FROM data.webengine_news ORDER BY id DESC");
+		} else {
+			$news = $this->db->query_fetch("SELECT * FROM ".WEBENGINE_NEWS." ORDER BY news_id DESC");
+		}
 		if(is_array($news)) {
 			
 			foreach($news as $id => $data) {
@@ -232,9 +287,13 @@ class News {
 		}
 	}
 	
-	function retrieveNewsDataForCache() {
-		$this->db = Connection::Database('Me_MuOnline');
-		$news = $this->db->query_fetch("SELECT news_id,news_title,news_author,news_date,allow_comments,news_content FROM ".WEBENGINE_NEWS." ORDER BY news_id DESC");
+    function retrieveNewsDataForCache() {
+		if($this->useOpenMuNews()) {
+            $catSel = $this->hasCategoryColumn() ? 'category' : 'NULL::varchar AS category';
+            $news = $this->db->query_fetch("SELECT id AS news_id, title AS news_title, ".$catSel.", author AS news_author, EXTRACT(EPOCH FROM created_at)::bigint AS news_date, allow_comments, content AS news_content FROM data.webengine_news ORDER BY id DESC");
+		} else {
+			$news = $this->db->query_fetch("SELECT news_id,news_title,news_author,news_date,allow_comments,news_content FROM ".WEBENGINE_NEWS." ORDER BY news_id DESC");
+		}
 		if(is_array($news)) {
 			return $news;
 		} else {
@@ -310,10 +369,19 @@ class News {
 		return $content;
 	}
 	
-	function loadNewsData($id) {
-		$this->db = Connection::Database('Me_MuOnline');
-		if(check_value($id) && $this->newsIdExists($id)) {
-			$query = $this->db->query_fetch_single("SELECT * FROM ".WEBENGINE_NEWS." WHERE news_id = ?", array($id));
+    function loadNewsData($id) {
+        if(check_value($id)) {
+            if(!$this->newsIdExists($id) && $this->useOpenMuNews()) {
+                // In OpenMU mode, allow loading even if cache index isn’t refreshed yet
+            } elseif(!$this->newsIdExists($id)) {
+                return;
+            }
+			if($this->useOpenMuNews()) {
+                $catSel = $this->hasCategoryColumn() ? 'category' : 'NULL::varchar AS category';
+                $query = $this->db->query_fetch_single("SELECT id AS news_id, title AS news_title, ".$catSel.", author AS news_author, EXTRACT(EPOCH FROM created_at)::bigint AS news_date, allow_comments, content AS news_content FROM data.webengine_news WHERE id = ?", array($id));
+			} else {
+				$query = $this->db->query_fetch_single("SELECT * FROM ".WEBENGINE_NEWS." WHERE news_id = ?", array($id));
+			}
 			if($query && is_array($query)) {
 				
 				$query['news_title'] = base64_decode($query['news_title']);
@@ -324,8 +392,8 @@ class News {
 		}
 	}
 	
-	public function getNewsTranslations() {
-		$this->db = Connection::Database('Me_MuOnline');
+    public function getNewsTranslations() {
+        $this->db = Connection::Database('MuOnline');
 		if(!check_value($this->_id)) return;
 		$newsTranslations = $this->db->query_fetch("SELECT * FROM ".WEBENGINE_NEWS_TRANSLATIONS." WHERE news_id = ?", array($this->_id));
 		if(!is_array($newsTranslations)) return;
@@ -336,8 +404,8 @@ class News {
 		return $result;
 	}
 	
-	public function addNewsTransation() {
-		$this->db = Connection::Database('Me_MuOnline');
+    public function addNewsTransation() {
+        $this->db = Connection::Database('MuOnline');
 		
 		if(!check_value($this->_id)) throw new Exception('The provided news id is not valid.');
 		if(!check_value($this->_language)) throw new Exception('The provided news language is not valid.');
@@ -366,8 +434,8 @@ class News {
 		}
 	}
 	
-	public function updateNewsTransation() {
-		$this->db = Connection::Database('Me_MuOnline');
+    public function updateNewsTransation() {
+        $this->db = Connection::Database('MuOnline');
 		
 		if(!check_value($this->_id)) throw new Exception('The provided news id is not valid.');
 		if(!check_value($this->_language)) throw new Exception('The provided news language is not valid.');
@@ -391,8 +459,8 @@ class News {
 		}
 	}
 	
-	public function deleteNewsTranslation() {
-		$this->db = Connection::Database('Me_MuOnline');
+    public function deleteNewsTranslation() {
+        $this->db = Connection::Database('MuOnline');
 		if(!check_value($this->_id)) throw new Exception('The provided news id is not valid.');
 		if(!check_value($this->_language)) throw new Exception('The provided news language is not valid.');
 		
@@ -411,11 +479,11 @@ class News {
 		}
 	}
 	
-	public function loadNewsTranslationData() {
-		$this->db = Connection::Database('Me_MuOnline');
+    public function loadNewsTranslationData() {
+        $this->db = Connection::Database('MuOnline');
 		if(!check_value($this->_id)) return;
 		if(!check_value($this->_language)) return;
-		$result = $this->db->query_fetch_single("SELECT * FROM ".WEBENGINE_NEWS_TRANSLATIONS." WHERE news_id = ? AND news_language = ?", array($this->_id, $this->_language));
+        $result = $this->db->query_fetch_single("SELECT * FROM ".WEBENGINE_NEWS_TRANSLATIONS." WHERE news_id = ? AND news_language = ?", array($this->_id, $this->_language));
 		if(!is_array($result)) return;
 		return $result;
 	}
@@ -433,16 +501,20 @@ class News {
 		return $cacheContent;
 	}
 	
-	public function getNewsTranslationsDataList() {
-		$this->db = Connection::Database('Me_MuOnline');
-		if(!check_value($this->_id)) return;
-		$result = $this->db->query_fetch("SELECT * FROM ".WEBENGINE_NEWS_TRANSLATIONS." WHERE news_id = ?", array($this->_id));
+    public function getNewsTranslationsDataList() {
+        if(!check_value($this->_id)) return;
+        if($this->useOpenMuNews()) {
+            $this->ensureOpenMuNewsTranslations();
+            $result = $this->db->query_fetch("SELECT id, news_id, news_language, news_title, news_content FROM data.webengine_news_translations WHERE news_id = ?", array($this->_id));
+        } else {
+            $result = $this->db->query_fetch("SELECT * FROM ".WEBENGINE_NEWS_TRANSLATIONS." WHERE news_id = ?", array($this->_id));
+        }
 		if(!is_array($result)) return;
 		return $result;
 	}
 	
-	private function _deleteAllNewsTranslations() {
-		$this->db = Connection::Database('Me_MuOnline');
+    private function _deleteAllNewsTranslations() {
+        $this->db = Connection::Database('MuOnline');
 		if(!check_value($this->_id)) return;
 		
 		$newsTranslations = $this->getNewsTranslations();

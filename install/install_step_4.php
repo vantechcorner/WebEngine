@@ -37,6 +37,21 @@ try {
 	if($mudb->dead) {
 		throw new Exception("Could not connect to database");
 	}
+
+	// Ensure cron table exists for PostgreSQL/OpenMU
+	if(isset($_SESSION['install_sql_dsn']) && in_array($_SESSION['install_sql_dsn'], array(3,4))) {
+		$mudb->query("CREATE TABLE IF NOT EXISTS public.webengine_cron (
+			cron_id SERIAL PRIMARY KEY,
+			cron_name VARCHAR(100) NOT NULL,
+			cron_description VARCHAR(255),
+			cron_file_run VARCHAR(100) NOT NULL,
+			cron_run_time INTEGER NOT NULL,
+			cron_status SMALLINT DEFAULT 1,
+			cron_protected SMALLINT DEFAULT 0,
+			cron_file_md5 VARCHAR(64),
+			cron_last_run BIGINT
+		)");
+	}
 	
 	# check cron job files
 	foreach($install['cron_jobs'] as $key => $cron) {

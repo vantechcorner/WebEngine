@@ -1,0 +1,49 @@
+<html>
+<!-- /**
+* @+===========================================================================+
+* @¦ Launcher Atomator ~ for Zythe Mu Launcher                                 ¦
+* @¦ Credits: Zyth3                                                            ¦
+* @+===========================================================================+
+* Clean up by Van Tech Corner
+* https://vantc.net
+*
+*/ -->
+<head>
+	<title>MU Online - News</title>
+	<script type="text/javascript" src="config.js"></script>
+</head>
+<!-- =========================== Clean, decoded markup ============================ -->
+<!-- ========================================================================= -->
+<body oncontextmenu="return false" ondragstart="return false" onselectstart="return false" style="margin:0; border:0; overflow:hidden;">
+	<style type="text/css">
+		body, html { margin:0; border:0; overflow:hidden; }
+		img { border:none; vertical-align:top; }
+		#banner_l { width:448px; background:url('img/bg_banner.gif') left top no-repeat; padding:1px; border:3px solid #3f3f41; display:inline-block; }
+	</style>
+	<div id="banner_l">
+		<script type="text/javascript">
+		(function() {
+			function renderBanner() {
+				var items = [];
+				try {
+					items = [
+						{ href: (typeof slide1_Lnk !== 'undefined' ? slide1_Lnk : ''), img: (typeof slide1_Img !== 'undefined' ? slide1_Img : '') },
+						{ href: (typeof slide2_Lnk !== 'undefined' ? slide2_Lnk : ''), img: (typeof slide2_Img !== 'undefined' ? slide2_Img : '') },
+						{ href: (typeof slide3_Lnk !== 'undefined' ? slide3_Lnk : ''), img: (typeof slide3_Img !== 'undefined' ? slide3_Img : '') }
+					].filter(function(it){ return it && it.img; });
+				} catch(e) {}
+				var href = (typeof homePage === 'string' && homePage) ? homePage : '#';
+				var img = 'img/banner.jpg';
+				if(items.length) {
+					var idx = Math.floor(Math.random() * items.length);
+					href = items[idx].href || href;
+					img = items[idx].img || img;
+				}
+				document.write('<a href="'+href+'" hideFocus target="_blank"><img src="'+img+'" width="448" height="244" alt=""/></a>');
+			}
+			renderBanner();
+		})();
+		</script>
+	</div>
+</body>
+</html>

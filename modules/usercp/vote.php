@@ -42,11 +42,14 @@ try {
 		$vote_sites = $vote->retrieveVotesites();
 		if(is_array($vote_sites)) {
 			foreach($vote_sites as $thisVotesite) {
+				$id = $thisVotesite['votesite_id'] ?? ($thisVotesite['id'] ?? null);
+				$title = $thisVotesite['votesite_title'] ?? ($thisVotesite['name'] ?? '');
+				$reward = $thisVotesite['votesite_reward'] ?? ($thisVotesite['reward_credits'] ?? 0);
 				echo '<form action="" method="post">';
-					echo '<input type="hidden" name="voting_site_id" value="'.$thisVotesite['votesite_id'].'"/>';
+					echo '<input type="hidden" name="voting_site_id" value="'.$id.'"/>';
 					echo '<tr>';
-						echo '<td>'.$thisVotesite['votesite_title'].'</td>';
-						echo '<td>'.$thisVotesite['votesite_reward'].'</td>';
+						echo '<td>'.$title.'</td>';
+						echo '<td>'.$reward.'</td>';
 						echo '<td><button name="submit" value="submit" class="btn btn-primary">'.lang('vfc_txt_3',true).'</button></td>';
 					echo '</tr>';
 				echo '</form>';

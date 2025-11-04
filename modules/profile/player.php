@@ -23,10 +23,20 @@ if(mconfig('active')) {
 			$cData = $weProfiles->data();
 			
 			$onlineStatus = 0;
-			$onlineCharactersCache = loadCache('online_characters.cache');
-			if(is_array($onlineCharactersCache) && in_array($cData[1], $onlineCharactersCache)) {
-				$onlineStatus = 1;
+			// Prefer OpenMU API per-character online check, fallback to cache
+			if(function_exists('openMuApiIsCharacterOnlineByName')) {
+				$api = openMuApiIsCharacterOnlineByName($cData[1]);
+				if($api === true) { $onlineStatus = 1; }
+				elseif($api === false) { $onlineStatus = 0; }
+				else {
+					$onlineCharactersCache = loadCache('online_characters.cache');
+					if(is_array($onlineCharactersCache) && in_array($cData[1], $onlineCharactersCache)) $onlineStatus = 1;
+				}
+			} else {
+				$onlineCharactersCache = loadCache('online_characters.cache');
+				if(is_array($onlineCharactersCache) && in_array($cData[1], $onlineCharactersCache)) $onlineStatus = 1;
 			}
+
 			
 			echo '<div class="profiles_player_card '.$custom['character_class'][$cData[2]][1].'">';
 				echo '<div class="profiles_player_content">';

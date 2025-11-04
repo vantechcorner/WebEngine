@@ -85,6 +85,13 @@ echo '<div class="list-group">';
 			echo 'PDO sqlsrv (windows)';
 			echo '<span class="pull-right">'.$check_8.'</span>';
 		echo '</div>';
+
+		$chk_pg = (extension_loaded('pdo_pgsql') ? true : false);
+		$check_pg = ($chk_pg ? '<span class="label label-success">Ok</span>' : '<span class="label label-warning">Optional Fix</span>');
+		echo '<div class="list-group-item">';
+			echo 'PDO pgsql (PostgreSQL)';
+			echo '<span class="pull-right">'.$check_pg.'</span>';
+		echo '</div>';
 	}
 	
 	$chk_9 = (extension_loaded('json') ? true : false);

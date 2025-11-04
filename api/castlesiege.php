@@ -17,9 +17,14 @@ try {
 	
 	if(!@include_once(rtrim(str_replace('\\','/', dirname(__DIR__)), '/') . '/includes/webengine.php')) throw new Exception('Could not load WebEngine.');
 	
-	$castleSiege = new CastleSiege();
-	$siegeData = $castleSiege->siegeData();
-	if(!is_array($siegeData)) throw new Exception(lang('error_103', true));
+    $castleSiege = new CastleSiege();
+    $siegeData = $castleSiege->siegeData();
+    // If no cache/live data available, return a graceful default instead of 500
+    if(!is_array($siegeData)) {
+        http_response_code(200);
+        echo json_encode(array('TimeLeft' => 0));
+        exit;
+    }
 	
 	http_response_code(200);
 	echo json_encode(

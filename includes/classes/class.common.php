@@ -85,6 +85,12 @@ class common {
 	public function retrieveUserID($username) {
 		if(!Validator::UsernameLength($username)) return;
 		if(!Validator::AlphaNumeric($username)) return;
+		// OpenMU: resolve UUID from data."Account"
+		if(strtolower($this->_serverFiles) == 'openmu') {
+			$row = $this->muonline->query_fetch_single('SELECT "Id" AS id FROM data."Account" WHERE "LoginName" = ?', array($username));
+			if(is_array($row) && isset($row['id'])) return $row['id'];
+			return;
+		}
 		$result = $this->memuonline->query_fetch_single("SELECT "._CLMN_MEMBID_." FROM "._TBL_MI_." WHERE "._CLMN_USERNM_." = ?", array($username));
 		if(is_array($result)) return $result[_CLMN_MEMBID_];
 		return;
@@ -97,20 +103,45 @@ class common {
 		return;
 	}
 
-	public function accountInformation($id) {
-		if(!Validator::Number($id)) return;
-		$result = $this->memuonline->query_fetch_single("SELECT * FROM "._TBL_MI_." WHERE "._CLMN_MEMBID_." = ?", array($id));
-		if(is_array($result)) return $result;
-		return;
-	}
+    public function accountInformation($idOrLogin) {
+        // OpenMU: account id is UUID, stored in data."Account" and mirrored as _TBL_MI_
+        // Accept either UUID (preferred) or login name for backward compatibility
+        if(!check_value($idOrLogin)) return;
+        $isUuid = is_string($idOrLogin) && preg_match('/^[0-9a-fA-F\-]{36}$/', $idOrLogin);
+        // For OpenMU, read from MuOnline connection; otherwise use Me_MuOnline
+        $db = (strtolower($this->_serverFiles) == 'openmu') ? $this->muonline : $this->memuonline;
+        if($isUuid) {
+            $result = $db->query_fetch_single("SELECT * FROM "._TBL_MI_." WHERE "._CLMN_MEMBID_." = ?", array($idOrLogin));
+        } else {
+            $result = $db->query_fetch_single("SELECT * FROM "._TBL_MI_." WHERE "._CLMN_USERNM_." = ?", array($idOrLogin));
+        }
+        if(is_array($result)) return $result;
+        return;
+    }
 
-	public function accountOnline($username) {
-		if(!Validator::UsernameLength($username)) return;
-		if(!Validator::AlphaNumeric($username)) return;
-		$result = $this->memuonline->query_fetch_single("SELECT "._CLMN_CONNSTAT_." FROM "._TBL_MS_." WHERE "._CLMN_USERNM_." = ? AND "._CLMN_CONNSTAT_." = ?", array($username, 1));
-		if(is_array($result)) return true;
-		return;
-	}
+    public function accountOnline($accountIdOrLogin) {
+        // OpenMU: online status is tracked on Character.State per character; treat account online if any character is online
+        if(!check_value($accountIdOrLogin)) return;
+        // Prefer OpenMU Admin API if configured/reachable
+        if(strtolower($this->_serverFiles) == 'openmu' && function_exists('openMuApiIsAccountOnline')) {
+            if(!(is_string($accountIdOrLogin) && preg_match('/^[0-9a-fA-F\-]{36}$/', $accountIdOrLogin))) {
+                $api = openMuApiIsAccountOnline($accountIdOrLogin);
+                if($api === true) return true;
+                if($api === false) return false;
+                // if null, fall back to DB
+            }
+        }
+        $param = $accountIdOrLogin;
+        if(!(is_string($accountIdOrLogin) && preg_match('/^[0-9a-fA-F\-]{36}$/', $accountIdOrLogin))) {
+            // resolve uuid from login
+            $acc = $this->muonline->query_fetch_single("SELECT "._CLMN_ACCOUNT_ID_." AS id FROM "._TBL_ACCOUNT_." WHERE "._CLMN_ACCOUNT_LOGIN_." = ?", array($accountIdOrLogin));
+            if(!is_array($acc) || !isset($acc['id'])) return;
+            $param = $acc['id'];
+        }
+        $result = $this->muonline->query_fetch_single("SELECT COUNT(*) AS cnt FROM "._TBL_CHARACTER_." WHERE "._CLMN_CHAR_ACCOUNT_ID_." = ? AND "._CLMN_CHAR_STATE_." > 0", array($param));
+        if(is_array($result) && (int)$result['cnt'] > 0) return true;
+        return;
+    }
 
 	public function changePassword($id,$username,$new_password) {
 		if(!Validator::UnsignedNumber($id)) return;
@@ -268,7 +299,12 @@ class common {
 	
 	public function isIpBlocked($ip) {
 		if(!Validator::Ip($ip)) return true;
-		$result = $this->memuonline->query_fetch_single("SELECT * FROM ".WEBENGINE_BLOCKED_IP." WHERE block_ip = ?", array($ip));
+		// OpenMU uses MuOnline connection for WebEngine tables
+		$db = (strtolower($this->_serverFiles) == 'openmu') ? $this->muonline : $this->memuonline;
+		if(strtolower($this->_serverFiles) == 'openmu') {
+			$db->query("CREATE TABLE IF NOT EXISTS public.webengine_blocked_ip (id SERIAL PRIMARY KEY, block_ip INET NOT NULL UNIQUE, block_by VARCHAR(50) NOT NULL, block_date BIGINT NOT NULL)");
+		}
+		$result = $db->query_fetch_single("SELECT * FROM ".WEBENGINE_BLOCKED_IP." WHERE block_ip = ?", array($ip));
 		if(!is_array($result)) return;
 		return true;
 	}
@@ -277,7 +313,12 @@ class common {
 		if(!check_value($user)) return;
 		if(!Validator::Ip($ip)) return;
 		if($this->isIpBlocked($ip)) return;
-		$result = $this->memuonline->query("INSERT INTO ".WEBENGINE_BLOCKED_IP." (block_ip,block_by,block_date) VALUES (?,?,?)", array($ip,$user,time()));
+		$db = (strtolower($this->_serverFiles) == 'openmu') ? $this->muonline : $this->memuonline;
+		// Ensure table exists in public schema for OpenMU
+		if(strtolower($this->_serverFiles) == 'openmu') {
+			$db->query("CREATE TABLE IF NOT EXISTS public.webengine_blocked_ip (id SERIAL PRIMARY KEY, block_ip INET NOT NULL UNIQUE, block_by VARCHAR(50) NOT NULL, block_date BIGINT NOT NULL)");
+		}
+		$result = $db->query("INSERT INTO ".WEBENGINE_BLOCKED_IP." (block_ip,block_by,block_date) VALUES (?,?,?)", array($ip,$user,time()));
 		if(!$result) return;
 		
 		$this->_updateBlockedIpCache();
@@ -285,12 +326,17 @@ class common {
 	}
 
 	public function retrieveBlockedIPs() {
-		return $this->memuonline->query_fetch("SELECT * FROM ".WEBENGINE_BLOCKED_IP." ORDER BY id DESC");
+		$db = (strtolower($this->_serverFiles) == 'openmu') ? $this->muonline : $this->memuonline;
+		if(strtolower($this->_serverFiles) == 'openmu') {
+			$db->query("CREATE TABLE IF NOT EXISTS public.webengine_blocked_ip (id SERIAL PRIMARY KEY, block_ip INET NOT NULL UNIQUE, block_by VARCHAR(50) NOT NULL, block_date BIGINT NOT NULL)");
+		}
+		return $db->query_fetch("SELECT * FROM ".WEBENGINE_BLOCKED_IP." ORDER BY id DESC");
 	}
 
 	public function unblockIpAddress($id) {
 		if(!check_value($id)) return;
-		$result = $this->memuonline->query("DELETE FROM ".WEBENGINE_BLOCKED_IP." WHERE id = ?", array($id));
+		$db = (strtolower($this->_serverFiles) == 'openmu') ? $this->muonline : $this->memuonline;
+		$result = $db->query("DELETE FROM ".WEBENGINE_BLOCKED_IP." WHERE id = ?", array($id));
 		if(!$result) return;
 		
 		$this->_updateBlockedIpCache();

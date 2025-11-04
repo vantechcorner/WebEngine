@@ -18,9 +18,12 @@ echo '<div class="page-title"><span>'.lang('module_titles_txt_12',true).'</span>
 try {
 	
 	if(!mconfig('active')) throw new Exception(lang('error_47',true));
+
+    // Experimental feature notice for OpenMU reset
+    echo '<div class="alert alert-warning text-center" style="margin:10px 0;">Experimental Feature. Please use in-game command <strong>/reset</strong> to avoid errors.</div>';
 	
 	$Character = new Character();
-	$AccountCharacters = $Character->AccountCharacter($_SESSION['username']);
+	$AccountCharacters = $Character->AccountCharacter($_SESSION['userid']);
 	if(!is_array($AccountCharacters)) throw new Exception(lang('error_46',true));
 	
 	if(isset($_POST['submit'])) {
@@ -46,16 +49,46 @@ try {
 		
 		foreach($AccountCharacters as $thisCharacter) {
 			$characterData = $Character->CharacterData($thisCharacter);
-			$characterIMG = $Character->GenerateCharacterClassAvatar($characterData[_CLMN_CHR_CLASS_]);
+			if(!is_array($characterData)) continue;
+			$characterData_l = array_change_key_case($characterData, CASE_LOWER);
+			// resolve legacy class id for avatar
+			$rawClass = isset($characterData[_CLMN_CHR_CLASS_]) ? $characterData[_CLMN_CHR_CLASS_] : ($characterData['CharacterClassId'] ?? ($characterData_l['characterclassid'] ?? 0));
+			$legacyClassNum = 0;
+			if(is_numeric($rawClass)) {
+				$legacyClassNum = (int)$rawClass;
+			} else {
+				if(function_exists('getOpenMUClassNumberById')) $legacyClassNum = getOpenMUClassNumberById($rawClass);
+			}
+			$characterIMG = $Character->GenerateCharacterClassAvatar($legacyClassNum);
+			// character name
+			$charName = isset($characterData[_CLMN_CHR_NAME_]) ? $characterData[_CLMN_CHR_NAME_] : ($characterData['Name'] ?? ($characterData_l['name'] ?? ''));
+			// display level (calculate from Experience for OpenMU)
+			$dispLevel = isset($characterData[_CLMN_CHR_LVL_]) && is_numeric($characterData[_CLMN_CHR_LVL_]) ? (int)$characterData[_CLMN_CHR_LVL_] : null;
+			if(!is_numeric($dispLevel)) {
+				$exp = $characterData['Experience'] ?? ($characterData_l['experience'] ?? ($characterData[_CLMN_CHAR_EXPERIENCE_] ?? null));
+				if(is_numeric($exp)) {
+					if(function_exists('calculateOpenMULevelFromDbOrApprox')) {
+						$dispLevel = calculateOpenMULevelFromDbOrApprox($exp);
+					} elseif(function_exists('calculateOpenMULevel')) {
+						$dispLevel = calculateOpenMULevel($exp);
+					}
+				}
+			}
+			if(!is_numeric($dispLevel)) $dispLevel = 0;
+			// money (warehouse money linked via ItemStorage)
+			$charId = $characterData['Id'] ?? ($characterData_l['id'] ?? null);
+			$dispMoney = is_numeric($characterData[_CLMN_CHR_ZEN_] ?? null) ? (int)$characterData[_CLMN_CHR_ZEN_] : (function_exists('getOpenMUCharacterMoney') && $charId ? getOpenMUCharacterMoney($charId) : 0);
+			// resets (calculated helper)
+			$dispResets = function_exists('getOpenMUCharacterResets') && $charId ? getOpenMUCharacterResets($charId) : (int)($characterData['Resets'] ?? ($characterData_l['resets'] ?? 0));
 			
 			echo '<form action="" method="post">';
-				echo '<input type="hidden" name="character" value="'.$characterData[_CLMN_CHR_NAME_].'"/>';
+				echo '<input type="hidden" name="character" value="'.$charName.'"/>';
 				echo '<tr>';
 					echo '<td>'.$characterIMG.'</td>';
-					echo '<td>'.$characterData[_CLMN_CHR_NAME_].'</td>';
-					echo '<td>'.$characterData[_CLMN_CHR_LVL_].'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_ZEN_]).'</td>';
-					echo '<td>'.number_format($characterData[_CLMN_CHR_RSTS_]).'</td>';
+					echo '<td>'.$charName.'</td>';
+					echo '<td>'.$dispLevel.'</td>';
+					echo '<td>'.number_format($dispMoney).'</td>';
+					echo '<td>'.number_format($dispResets).'</td>';
 					echo '<td><button name="submit" value="submit" class="btn btn-primary">'.lang('resetcharacter_txt_5',true).'</button></td>';
 				echo '</tr>';
 			echo '</form>';

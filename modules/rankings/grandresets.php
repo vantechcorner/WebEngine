@@ -15,7 +15,8 @@ try {
 	
 	echo '<div class="page-title"><span>'.lang('module_titles_txt_10',true).'</span></div>';
 	
-	$Rankings = new Rankings();
+	// Use OpenMU rankings class if available
+	$Rankings = class_exists('RankingsOpenMU') ? new RankingsOpenMU() : new Rankings();
 	$Rankings->rankingsMenu();
 	loadModuleConfigs('rankings');
 	

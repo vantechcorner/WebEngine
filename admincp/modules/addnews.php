@@ -21,7 +21,8 @@ if($News->isNewsDirWritable()) {
 	
 	// Add news process::
 	if(isset($_POST['news_submit'])) {
-		$News->addNews($_POST['news_title'],$_POST['news_content'],$_POST['news_author'],0);
+		$category = isset($_POST['news_category']) ? trim($_POST['news_category']) : null;
+		$News->addNews($_POST['news_title'],$_POST['news_content'],$_POST['news_author'],0,$category);
 		$News->cacheNews();
 		$News->updateNewsCacheIndex();
 		redirect(1, 'admincp/?module=managenews');
@@ -36,6 +37,10 @@ if($News->isNewsDirWritable()) {
 		<div class="form-group">
 			<label for="news_content"></label>
 			<textarea name="news_content" id="news_content"></textarea>
+		</div>
+		<div class="form-group">
+			<label for="input_cat">Category (text):</label>
+			<input type="text" class="form-control" id="input_cat" name="news_category" placeholder="e.g. Notice, Update, Event"/>
 		</div>
 		<div class="form-group">
 			<label for="input_2">Author:</label>

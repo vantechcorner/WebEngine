@@ -227,7 +227,7 @@ function cs_CalculateTimeLeft() {
 
 function updateCronLastRun($file) {
 	$database = Connection::Database('Me_MuOnline');
-	$update = $database->query("UPDATE ".WEBENGINE_CRON." SET cron_last_run = ? WHERE cron_file_run = ?", array(time(), $file));
+    $update = $database->query("UPDATE ".WEBENGINE_CRON." SET cron_last_run = ? WHERE cron_file_run = ?", array(time(), $file));
 	if(!$update) return;
 	return true;
 }
@@ -342,10 +342,12 @@ function loadConfig($name="webengine") {
 }
 
 function getPlayerClassAvatar($code=0, $htmlImageTag=true, $tooltip=true, $cssClass=null) {
-	global $custom;
-	$imageFileName = array_key_exists($code, $custom['character_class']) ? $custom['character_class'][$code][2] : 'avatar.jpg';
+    global $custom;
+    if(!is_array($custom)) $custom = array();
+    if(!array_key_exists('character_class', $custom) || !is_array($custom['character_class'])) $custom['character_class'] = array();
+    $imageFileName = array_key_exists($code, $custom['character_class']) ? $custom['character_class'][$code][2] : 'avatar.jpg';
 	$imageFullPath = __PATH_TEMPLATE_IMG__ . config('character_avatars_dir', true) . '/' . $imageFileName;
-	$className = array_key_exists($code, $custom['character_class']) ? $custom['character_class'][$code][0] : '';
+    $className = array_key_exists($code, $custom['character_class']) ? $custom['character_class'][$code][0] : '';
 	if(!$htmlImageTag) return $imageFullPath;
 	$result = '<img';
 	if(check_value($cssClass)) $result .= ' class="'.$cssClass.'"';
@@ -353,6 +355,8 @@ function getPlayerClassAvatar($code=0, $htmlImageTag=true, $tooltip=true, $cssCl
 	$result .= ' src="'.$imageFullPath.'" />';
 	return $result;
 }
+
+// removed duplicate getPlayerClass; use single safe version defined later
 
 function playerProfile($playerName, $returnLinkOnly=false) {
 	if(!config('player_profiles',true)) return $playerName;
@@ -536,9 +540,11 @@ function readableFileSize($bytes, $decimals = 2) {
 }
 
 function getPlayerClass($class=0) {
-	global $custom;
-	if(!array_key_exists($class, $custom['character_class'])) return 'Unknown';
-	return $custom['character_class'][$class][0];
+    global $custom;
+    if(!is_array($custom)) $custom = array();
+    if(!array_key_exists('character_class', $custom) || !is_array($custom['character_class'])) $custom['character_class'] = array();
+    if(!array_key_exists($class, $custom['character_class'])) return 'Unknown';
+    return $custom['character_class'][$class][0];
 }
 
 function custom($index) {
