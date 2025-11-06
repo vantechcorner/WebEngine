@@ -512,25 +512,31 @@ class Account extends common {
 	}
 	
 	public function getOnlineAccountCount($server=null) {
-		if(check_value($server)) {
-			$result = $this->memuonline->query_fetch_single("SELECT COUNT(*) as online FROM "._TBL_MS_." WHERE "._CLMN_CONNSTAT_." = 1 AND "._CLMN_MS_GS_." = ?", array($server));
-			if(!is_array($result)) return 0;
-			return $result['online'];
+		// Prefer OpenMU Admin API total players if available
+		if(function_exists('openMuApiOnlinePlayersCount')) {
+			$apiCount = openMuApiOnlinePlayersCount();
+			if(is_int($apiCount)) return $apiCount;
 		}
+		// Fallback: DB count without server grouping (OpenMU has no ServerName)
 		$result = $this->memuonline->query_fetch_single("SELECT COUNT(*) as online FROM "._TBL_MS_." WHERE "._CLMN_CONNSTAT_." = 1");
 		if(!is_array($result)) return 0;
-		return $result['online'];
+		return (int)$result['online'];
 	}
 	
 	public function getOnlineAccountList($server=null) {
-		if(check_value($server)) {
-			$result = $this->memuonline->query_fetch("SELECT "._CLMN_MS_MEMBID_.", "._CLMN_MS_GS_.", "._CLMN_MS_IP_." FROM "._TBL_MS_." WHERE "._CLMN_CONNSTAT_." = 1 AND "._CLMN_MS_GS_." = ?", array($server));
-			if(!is_array($result)) return;
-			return $result;
+		// Prefer OpenMU Admin API list of online character names
+		if(function_exists('openMuApiGetStatus')) {
+			$status = openMuApiGetStatus();
+			if(is_array($status) && isset($status['playersList']) && is_array($status['playersList'])) {
+				return array_values(array_filter(array_map(function($n){ return is_string($n) ? trim($n) : null; }, $status['playersList'])));
+			}
 		}
-		$result = $this->memuonline->query_fetch("SELECT "._CLMN_MS_MEMBID_.", "._CLMN_MS_GS_.", "._CLMN_MS_IP_." FROM "._TBL_MS_." WHERE "._CLMN_CONNSTAT_." = 1");
+		// Fallback: DB query (best-effort); return list of account ids if possible
+		$result = $this->memuonline->query_fetch("SELECT "._CLMN_MS_MEMBID_." AS account_id FROM "._TBL_MS_." WHERE "._CLMN_CONNSTAT_." = 1");
 		if(!is_array($result)) return;
-		return $result;
+		$names = array();
+		foreach($result as $row) { if(isset($row['account_id'])) $names[] = $row['account_id']; }
+		return $names;
 	}
 	
 	private function sendRegistrationVerificationEmail($username, $account_email, $key) {

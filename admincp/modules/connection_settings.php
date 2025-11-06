@@ -60,14 +60,14 @@ if(isset($_POST['settings_submit'])) {
 		$setting['SQL_USE_2_DB'] = ($_POST['SQL_USE_2_DB'] == 1 ? true : false);
 		
 		# pdo dsn
-		if(!isset($_POST['SQL_PDO_DRIVER'])) throw new Exception('Invalid PDO Driver setting.');
-		if(!Validator::UnsignedNumber($_POST['SQL_PDO_DRIVER'])) throw new Exception('Invalid PDO Driver setting.');
-		if(!in_array($_POST['SQL_PDO_DRIVER'], array(1, 2))) throw new Exception('Invalid PDO Driver setting.');
+    if(!isset($_POST['SQL_PDO_DRIVER'])) throw new Exception('Invalid PDO Driver setting.');
+    if(!Validator::UnsignedNumber($_POST['SQL_PDO_DRIVER'])) throw new Exception('Invalid PDO Driver setting.');
+    if(!in_array($_POST['SQL_PDO_DRIVER'], array(1, 2, 3))) throw new Exception('Invalid PDO Driver setting.');
 		$setting['SQL_PDO_DRIVER'] = $_POST['SQL_PDO_DRIVER'];
 		
 		# md5
-		if(!isset($_POST['SQL_PASSWORD_ENCRYPTION'])) throw new Exception('Invalid password encryption setting.');
-		if(!in_array($_POST['SQL_PASSWORD_ENCRYPTION'], array('none', 'wzmd5', 'phpmd5', 'sha256'))) throw new Exception('Invalid password encryption setting.');
+    if(!isset($_POST['SQL_PASSWORD_ENCRYPTION'])) throw new Exception('Invalid password encryption setting.');
+    if(!in_array($_POST['SQL_PASSWORD_ENCRYPTION'], array('none', 'wzmd5', 'phpmd5', 'sha256', 'bcrypt'))) throw new Exception('Invalid password encryption setting.');
 		$setting['SQL_PASSWORD_ENCRYPTION'] = $_POST['SQL_PASSWORD_ENCRYPTION'];
 		
 		# test connection (1)
@@ -107,6 +107,9 @@ if(isset($_POST['settings_submit'])) {
 	}
 }
 
+// Normalize driver for selection (supports numeric or string)
+$__pdoDriver = (string)config('SQL_PDO_DRIVER', true);
+
 echo '<div class="col-md-12">';
 	echo '<form action="" method="post">';
 		echo '<table class="table table-striped table-bordered table-hover" style="table-layout: fixed;">';
@@ -114,8 +117,8 @@ echo '<div class="col-md-12">';
 			
 			echo '<tr>';
 				echo '<td>';
-					echo '<strong>Host</strong>';
-					echo '<p class="setting-description">Hostname/IP address of your MSSQL server.</p>';
+                    echo '<strong>Host</strong>';
+                    echo '<p class="setting-description">Hostname/IP address of your database server.</p>';
 				echo '</td>';
 				echo '<td>';
 					echo '<input type="text" class="form-control" name="SQL_DB_HOST" value="'.config('SQL_DB_HOST',true).'" required>';
@@ -195,22 +198,28 @@ echo '<div class="col-md-12">';
 			
 			echo '<tr>';
 				echo '<td>';
-					echo '<strong>PDO Driver</strong>';
-					echo '<p class="setting-description">Choose which driver WebEngine should use to remotely connect to your MSSQL server.</p>';
+                    echo '<strong>PDO Driver</strong>';
+                    echo '<p class="setting-description">Choose which PDO driver WebEngine should use.</p>';
 				echo '</td>';
 				echo '<td>';
 					echo '<div class="radio">';
 						echo '<label>';
-							echo '<input type="radio" name="SQL_PDO_DRIVER" value="1" '.(config('SQL_PDO_DRIVER',true) == 1 ? 'checked' : null).'>';
+                            echo '<input type="radio" name="SQL_PDO_DRIVER" value="1" '.($__pdoDriver === '1' ? 'checked' : null).'>';
 							echo 'dblib (linux)';
 						echo '</label>';
 					echo '</div>';
 					echo '<div class="radio">';
 						echo '<label>';
-							echo '<input type="radio" name="SQL_PDO_DRIVER" value="2" '.(config('SQL_PDO_DRIVER',true) == 2 ? 'checked' : null).'>';
+                            echo '<input type="radio" name="SQL_PDO_DRIVER" value="2" '.($__pdoDriver === '2' ? 'checked' : null).'>';
 							echo 'sqlsrv';
 						echo '</label>';
 					echo '</div>';
+                    echo '<div class="radio">';
+                        echo '<label>';
+                            echo '<input type="radio" name="SQL_PDO_DRIVER" value="3" '.($__pdoDriver === '3' || strtolower($__pdoDriver) === 'pgsql' ? 'checked' : null).'>';
+                            echo 'pgsql (PostgreSQL)';
+                        echo '</label>';
+                    echo '</div>';
 				echo '</td>';
 			echo '</tr>';
 			
@@ -242,6 +251,12 @@ echo '<div class="col-md-12">';
 							echo 'Sha256';
 						echo '</label>';
 					echo '</div>';
+                    echo '<div class="radio">';
+                        echo '<label>';
+                            echo '<input type="radio" name="SQL_PASSWORD_ENCRYPTION" value="bcrypt" '.(config('SQL_PASSWORD_ENCRYPTION',true) == 'bcrypt' ? 'checked' : null).'>';
+                            echo 'Bcrypt (OpenMU)';
+                        echo '</label>';
+                    echo '</div>';
 				echo '</td>';
 			echo '</tr>';
 			

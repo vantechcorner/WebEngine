@@ -46,6 +46,8 @@ $allowedSettings = array(
 	'server_info_masterexp',
 	'server_info_drop',
 	'maximum_online',
+	'openmu_api_base_url',
+	'game_server_ip',
 );
 
 if(isset($_POST['settings_submit'])) {
@@ -188,6 +190,18 @@ if(isset($_POST['settings_submit'])) {
 		# maximum online
 		if(isset($_POST['maximum_online'])) if(!Validator::UnsignedNumber($_POST['maximum_online'])) throw new Exception('Invalid setting (maximum_online)');
 		$setting['maximum_online'] = $_POST['maximum_online'];
+
+		# OpenMU API base URL
+		if(isset($_POST['openmu_api_base_url']) && $_POST['openmu_api_base_url'] !== '') {
+			if(!Validator::Url($_POST['openmu_api_base_url'])) throw new Exception('Invalid setting (openmu_api_base_url)');
+			$setting['openmu_api_base_url'] = rtrim($_POST['openmu_api_base_url'], '/');
+		}
+
+		# Game Server IP (for status probe)
+		if(isset($_POST['game_server_ip']) && $_POST['game_server_ip'] !== '') {
+			if(!Validator::Ip($_POST['game_server_ip'])) throw new Exception('Invalid setting (game_server_ip)');
+			$setting['game_server_ip'] = $_POST['game_server_ip'];
+		}
 		
 		# webengine configs
 		$webengineConfigurations = webengineConfigs();
@@ -211,6 +225,12 @@ if(isset($_POST['settings_submit'])) {
 		message('error', $ex->getMessage());
 	}
 }
+
+// Provide sane defaults for OpenMU fields if missing in config
+$__openmuApiBase = config('openmu_api_base_url', true);
+if(!is_string($__openmuApiBase) || $__openmuApiBase === '') { $__openmuApiBase = 'http://localhost:5000'; }
+$__gameServerIp = config('game_server_ip', true);
+if(!is_string($__gameServerIp) || $__gameServerIp === '') { $__gameServerIp = '127.0.0.1'; }
 
 echo '<div class="col-md-12">';
 	echo '<form action="" method="post">';
@@ -627,13 +647,33 @@ echo '<div class="col-md-12">';
 			
 			echo '<tr>';
 				echo '<td>';
-					echo '<strong>Maximum Online Players</strong>';
+						echo '<strong>Maximum Online Players</strong>';
 					echo '<p class="setting-description">Maximum amount of players that your server may allow. Leave empty to hide this information.</p>';
 				echo '</td>';
 				echo '<td>';
 					echo '<input type="text" class="form-control" name="maximum_online" value="'.config('maximum_online',true).'">';
 				echo '</td>';
 			echo '</tr>';
+
+				echo '<tr>';
+					echo '<td>';
+						echo '<strong>OpenMU Admin API Base URL</strong>';
+						echo '<p class="setting-description">Example: http://localhost:5000</p>';
+					echo '</td>';
+					echo '<td>';
+                    echo '<input type="text" class="form-control" name="openmu_api_base_url" value="'.$__openmuApiBase.'">';
+					echo '</td>';
+				echo '</tr>';
+
+				echo '<tr>';
+					echo '<td>';
+						echo '<strong>Game Server IP</strong>';
+						echo '<p class="setting-description">Used to probe ports 55901/55902 for Server Status.</p>';
+					echo '</td>';
+					echo '<td>';
+                    echo '<input type="text" class="form-control" name="game_server_ip" value="'.$__gameServerIp.'">';
+					echo '</td>';
+				echo '</tr>';
 			
 		echo '</table>';
 		

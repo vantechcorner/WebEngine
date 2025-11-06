@@ -30,6 +30,17 @@ class RankingsOpenMU extends Rankings {
         return implode(',', $quoted);
     }
 
+    private function _buildExcludedGuildsList() {
+        if(!is_array($this->_excludedGuilds) || empty($this->_excludedGuilds)) return '';
+        $quoted = array();
+        foreach($this->_excludedGuilds as $name) {
+            if(!is_string($name) || $name==='') continue;
+            $quoted[] = "'" . str_replace("'", "''", $name) . "'";
+        }
+        if(empty($quoted)) return '';
+        return implode(',', $quoted);
+    }
+
     private function mapClassNameToLegacyNumber($className) {
         if(!is_string($className)) return 0;
         $n = strtolower($className);
@@ -125,6 +136,10 @@ class RankingsOpenMU extends Rankings {
      * Get reset rankings for OpenMU
      */
     public function getResetRankings() {
+        $this->mu = Connection::Database('MuOnline');
+        $excludeList = $this->_buildExcludedCharactersList();
+        $where = "WHERE c."._CLMN_CHAR_EXPERIENCE_." > 0";
+        if($excludeList !== '') { $where .= " AND c."._CLMN_CHAR_NAME_." NOT IN (".$excludeList.")"; }
         $query = "SELECT 
                     c."._CLMN_CHAR_NAME_." as character_name,
                     c."._CLMN_CHAR_EXPERIENCE_." as experience,
@@ -135,8 +150,7 @@ class RankingsOpenMU extends Rankings {
                   FROM "._TBL_CHARACTER_." c
                   INNER JOIN "._TBL_ACCOUNT_." a ON c."._CLMN_CHAR_ACCOUNT_ID_." = a."._CLMN_ACCOUNT_ID_."
                   LEFT JOIN "._TBL_CHARACTER_CLASS_." cc ON c."._CLMN_CHAR_CLASS_ID_." = cc."._CLMN_CHARACTER_CLASS_ID_."
-                  WHERE c."._CLMN_CHAR_EXPERIENCE_." > 0
-                  AND c."._CLMN_CHAR_NAME_." NOT IN (".$this->_rankingsExcludeCharacters().")
+                  ".$where."
                   ORDER BY c."._CLMN_CHAR_EXPERIENCE_." DESC
                   LIMIT " . intval($this->_results);
         
@@ -162,6 +176,10 @@ class RankingsOpenMU extends Rankings {
      * Get grand reset rankings for OpenMU
      */
     public function getGrandResetRankings() {
+        $this->mu = Connection::Database('MuOnline');
+        $excludeList = $this->_buildExcludedCharactersList();
+        $where = "WHERE c."._CLMN_CHAR_MASTER_EXPERIENCE_." > 0";
+        if($excludeList !== '') { $where .= " AND c."._CLMN_CHAR_NAME_." NOT IN (".$excludeList.")"; }
         $query = "SELECT 
                     c."._CLMN_CHAR_NAME_." as character_name,
                     c."._CLMN_CHAR_EXPERIENCE_." as experience,
@@ -172,8 +190,7 @@ class RankingsOpenMU extends Rankings {
                   FROM "._TBL_CHARACTER_." c
                   INNER JOIN "._TBL_ACCOUNT_." a ON c."._CLMN_CHAR_ACCOUNT_ID_." = a."._CLMN_ACCOUNT_ID_."
                   LEFT JOIN "._TBL_CHARACTER_CLASS_." cc ON c."._CLMN_CHAR_CLASS_ID_." = cc."._CLMN_CHARACTER_CLASS_ID_."
-                  WHERE c."._CLMN_CHAR_MASTER_EXPERIENCE_." > 0
-                  AND c."._CLMN_CHAR_NAME_." NOT IN (".$this->_rankingsExcludeCharacters().")
+                  ".$where."
                   ORDER BY c."._CLMN_CHAR_MASTER_EXPERIENCE_." DESC
                   LIMIT " . intval($this->_results);
         
@@ -199,26 +216,58 @@ class RankingsOpenMU extends Rankings {
      * Get guild rankings for OpenMU
      */
     public function getGuildRankings() {
-        $query = "SELECT 
-                    g."._CLMN_GUILD_NAME_." as guild_name,
-                    g."._CLMN_GUILD_SCORE_." as score,
-                    g."._CLMN_GUILD_HOST_ID_." as host_id,
-                    g."._CLMN_GUILD_LOGO_." as logo,
-                    g."._CLMN_GUILD_NOTICE_." as notice,
-                    c."._CLMN_CHAR_NAME_." as master_name
-                  FROM "._TBL_GUILD_." g
-                  LEFT JOIN "._TBL_CHARACTER_." c ON g."._CLMN_GUILD_HOST_ID_." = c."._CLMN_CHAR_ID_."
-                  WHERE g."._CLMN_GUILD_NAME_." NOT IN (".$this->_rankingsExcludeGuilds().")
-                  ORDER BY g."._CLMN_GUILD_SCORE_." DESC
-                  LIMIT " . intval($this->_results);
-        
+        $this->mu = Connection::Database('MuOnline');
+        $excludeGuilds = $this->_buildExcludedGuildsList();
+        $where = '';
+        if($excludeGuilds !== '') { $where = "WHERE g."._CLMN_GUILD_NAME_." NOT IN (".$excludeGuilds.")"; }
+
+        // Detect actual guild master FK column in guild."Guild"
+        $hostCol = null;
+        $cols = $this->mu->query_fetch("SELECT column_name FROM information_schema.columns WHERE table_schema='guild' AND table_name='Guild'");
+        if(is_array($cols)) {
+            $columnNames = array_map(function($r){ return $r['column_name']; }, $cols);
+            $candidates = array('HostId','GuildMasterId','MasterCharacterId','MasterId','OwnerId','LeaderId');
+            foreach($candidates as $c) { if(in_array($c, $columnNames, true)) { $hostCol = $c; break; } }
+        }
+
+        if($hostCol) {
+            $query = "SELECT 
+                        g."._CLMN_GUILD_ID_." as guild_id,
+                        g."._CLMN_GUILD_NAME_." as guild_name,
+                        g."._CLMN_GUILD_SCORE_." as score,
+                        g.\"".$hostCol."\" as host_id,
+                        g."._CLMN_GUILD_LOGO_." as logo,
+                        g."._CLMN_GUILD_NOTICE_." as notice,
+                        c."._CLMN_CHAR_NAME_." as master_name
+                      FROM "._TBL_GUILD_." g
+                      LEFT JOIN "._TBL_CHARACTER_." c ON g.\"".$hostCol."\" = c."._CLMN_CHAR_ID_."
+                      ".$where."
+                      ORDER BY g."._CLMN_GUILD_SCORE_." DESC
+                      LIMIT " . intval($this->_results);
+        } else {
+            // Fallback without joining master (master name unknown)
+            $query = "SELECT 
+                        g."._CLMN_GUILD_ID_." as guild_id,
+                        g."._CLMN_GUILD_NAME_." as guild_name,
+                        g."._CLMN_GUILD_SCORE_." as score,
+                        NULL as host_id,
+                        g."._CLMN_GUILD_LOGO_." as logo,
+                        g."._CLMN_GUILD_NOTICE_." as notice,
+                        NULL as master_name
+                      FROM "._TBL_GUILD_." g
+                      ".$where."
+                      ORDER BY g."._CLMN_GUILD_SCORE_." DESC
+                      LIMIT " . intval($this->_results);
+        }
+
         $results = $this->mu->query_fetch($query);
         
         if (!is_array($results)) return false;
         
         // Add member count and convert logo
         foreach ($results as &$guild) {
-            $guild['member_count'] = getOpenMUGuildMemberCount($guild['guild_name']);
+            $gid = isset($guild['guild_id']) ? $guild['guild_id'] : null;
+            $guild['member_count'] = $gid ? getOpenMUGuildMemberCount($gid) : 0;
             $guild['logo_hex'] = convertOpenMUGuildLogoToHex($guild['logo']);
         }
         
@@ -276,6 +325,10 @@ class RankingsOpenMU extends Rankings {
      * Get online characters for OpenMU
      */
     public function getOnlineRankings() {
+        $this->mu = Connection::Database('MuOnline');
+        $excludeList = $this->_buildExcludedCharactersList();
+        $where = "WHERE c."._CLMN_CHAR_STATE_." > 0";
+        if($excludeList !== '') { $where .= " AND c."._CLMN_CHAR_NAME_." NOT IN (".$excludeList.")"; }
         $query = "SELECT 
                     c."._CLMN_CHAR_NAME_." as character_name,
                     c."._CLMN_CHAR_EXPERIENCE_." as experience,
@@ -286,8 +339,7 @@ class RankingsOpenMU extends Rankings {
                   FROM "._TBL_CHARACTER_." c
                   INNER JOIN "._TBL_ACCOUNT_." a ON c."._CLMN_CHAR_ACCOUNT_ID_." = a."._CLMN_ACCOUNT_ID_."
                   LEFT JOIN "._TBL_CHARACTER_CLASS_." cc ON c."._CLMN_CHAR_CLASS_ID_." = cc."._CLMN_CHARACTER_CLASS_ID_."
-                  WHERE c."._CLMN_CHAR_STATE_." > 0
-                  AND c."._CLMN_CHAR_NAME_." NOT IN (".$this->_rankingsExcludeCharacters().")
+                  ".$where."
                   ORDER BY c."._CLMN_CHAR_EXPERIENCE_." DESC
                   LIMIT " . intval($this->_results);
         

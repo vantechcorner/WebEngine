@@ -14,18 +14,7 @@
 echo '<h1 class="page-header">Online Accounts</h1>';
 
 $Account = new Account();
-$serverList = array('OpenMU');
-
-if(is_array($serverList)) {
-	echo '<div class="row">';
-		echo '<h3>By Server:</h3>';
-		foreach($serverList as $server) {
-			echo '<div class="col-xs-12 col-md-4 col-lg-3 text-center">';
-				echo '<pre><strong>'.$server.'</strong>: '.number_format($Account->getOnlineAccountCount($server)).'</pre>';
-			echo '</div>';
-		}
-	echo '</div>';
-}
+// OpenMU: No server grouping needed
 
 echo '<div class="row">';
     echo '<h3>Total Online:</h3>';
@@ -36,27 +25,22 @@ echo '</div>';
 
 $onlineAccounts = $Account->getOnlineAccountList();
 echo '<div class="row">';
-	echo '<h3>Account List:</h3>';
-	if(is_array($onlineAccounts)) {
+	echo '<h3>Online Characters:</h3>';
+	if(is_array($onlineAccounts) && count($onlineAccounts) > 0) {
 		echo '<table class="table table-condensed table-hover">';
 			echo '<thead>';
 				echo '<tr>';
-					echo '<th>Account</th>';
-					echo '<th>IP Address</th>';
-					echo '<th>Server</th>';
+					echo '<th>Character</th>';
 				echo '</tr>';
 			echo '</thead>';
 			echo '<tbody>';
-			foreach($onlineAccounts as $row) {
-				echo '<tr>';
-                    echo '<td><a href="'.admincp_base('accountinfo&id='.$row['AccountId']).'" target="_blank">'.$row['AccountId'].'</a></td>';
-                    echo '<td>'.$row['IP'].'</td>';
-                    echo '<td>OpenMU</td>';
-				echo '</tr>';
+			foreach($onlineAccounts as $name) {
+				$nameSafe = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+				echo '<tr><td>'.$nameSafe.'</td></tr>';
 			}
 			echo '</tbody>';
 		echo '</table>';
 	} else {
-		message('warning', 'There are no online accounts.');
+		message('warning', 'There are no online characters.');
 	}
 echo '</div>';

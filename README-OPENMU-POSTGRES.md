@@ -66,6 +66,7 @@ Admins running OpenMU (modern) who want WebEngine CMS to use the OpenMU PostgreS
 - Account search/info: accepts UUID or `LoginName`; online status uses API.
 - “Accounts from IP”, “Online Accounts”, “New Registrations”, “Search Character”, “Edit Character”, “Ban Account”, “Latest Bans”, “Search Ban”, “Blocked IPs”, “Credits Configs/Manager”, “Top Voters” updated to PostgreSQL + OpenMU.
 - Rankings (level/killers) and player profiles show API-backed online indicators.
+- Guild rankings: uses OpenMU schema with UUIDs; detects guild master FK; counts members by `GuildId`; handles logo LOB streams.
 
 ## Character Stat Management
 - Add Stats reads `LevelUpPoints`, computes level from `Experience`, validates class for Leadership, checks money from `ItemStorage`.
@@ -84,6 +85,15 @@ Admins running OpenMU (modern) who want WebEngine CMS to use the OpenMU PostgreS
 
 ### Known Limitations (OpenMU)
 - UserCP Unstick is not supported in this release when using OpenMU + PostgreSQL. The page displays an advisory note: "Please contact MU administrator for support if your account is stuck." Use in-game GM tools or database-side corrections instead.
+
+### Admin Settings (PostgreSQL/OpenMU)
+- Connection Settings:
+  - PDO Driver: select `pgsql` (value 3)
+  - Password Encryption: select `bcrypt`
+- Website Settings:
+  - `openmu_api_base_url` (e.g., http://localhost:5000)
+  - `game_server_ip` (for server status ports 55901/55902)
+Both pages preserve unknown keys in `webengine.json` and prefill values from the current config.
 
 ## Configuration Keys (webengine.json)
 - `openmu_api_base_url` — Base URL to OpenMU Admin API

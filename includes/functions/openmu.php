@@ -318,9 +318,25 @@ function getOpenMUAccountOnlineCharacters($accountId) {
  */
 function convertOpenMUGuildLogoToHex($logoData) {
     if (empty($logoData)) return '';
-    
-    // Convert bytea to hex string
-    return bin2hex($logoData);
+
+    // If PostgreSQL returned a stream resource (LOB), read it first
+    if (is_resource($logoData)) {
+        $meta = @stream_get_meta_data($logoData);
+        $contents = @stream_get_contents($logoData);
+        if ($contents === false || $contents === null) return '';
+        $logoData = $contents;
+    }
+
+    // If it's already a hex string, return as-is
+    if (is_string($logoData)) {
+        $trim = trim($logoData);
+        if ($trim !== '' && ctype_xdigit($trim) && (strlen($trim) % 2) === 0) {
+            return $trim;
+        }
+    }
+
+    // Convert raw bytes to hex
+    return is_string($logoData) ? bin2hex($logoData) : '';
 }
 
 /**

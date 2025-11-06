@@ -23,8 +23,28 @@ try {
 	if(!mconfig('rankings_enable_guilds')) throw new Exception(lang('error_44',true));
 	if(!mconfig('active')) throw new Exception(lang('error_44',true));
 	
-	$ranking_data = LoadCacheData('rankings_guilds.cache');
-	if(!is_array($ranking_data)) throw new Exception(lang('error_58',true));
+    $ranking_data = LoadCacheData('rankings_guilds.cache');
+    if(!is_array($ranking_data)) {
+        // Fallback: build cache immediately for OpenMU
+        if(class_exists('RankingsOpenMU')) {
+            $raw = $Rankings->loadRankings('guilds');
+            if(is_array($raw) && count($raw)>0) {
+                $rows = array();
+                foreach($raw as $g) {
+                    $gname = isset($g['guild_name']) ? $g['guild_name'] : (isset($g[0]) ? $g[0] : '');
+                    $mname = isset($g['master_name']) ? $g['master_name'] : (isset($g[1]) ? $g[1] : '');
+                    $score = isset($g['score']) ? (int)$g['score'] : (isset($g[2]) ? (int)$g[2] : 0);
+                    $logoHex = isset($g['logo_hex']) ? $g['logo_hex'] : (isset($g['logo']) ? convertOpenMUGuildLogoToHex($g['logo']) : (isset($g[3]) ? $g[3] : ''));
+                    $rows[] = array($gname, $mname, $score, $logoHex);
+                }
+                if(!empty($rows)) {
+                    UpdateCache('rankings_guilds.cache', BuildCacheData($rows));
+                    $ranking_data = LoadCacheData('rankings_guilds.cache');
+                }
+            }
+        }
+        if(!is_array($ranking_data)) throw new Exception(lang('error_58',true));
+    }
 	
 	if(mconfig('show_online_status')) $onlineCharacters = loadCache('online_characters.cache');
 	if(!is_array($onlineCharacters)) $onlineCharacters = array();

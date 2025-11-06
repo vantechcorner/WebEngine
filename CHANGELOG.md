@@ -16,6 +16,10 @@
   - Account online: `/api/is-online/{accountName}`
   - Global status: `/api/status`
   - Character online by name helper
+- Admin Online Accounts now supports API-backed totals and lists (no server grouping)
+- Admin settings:
+  - Connection Settings shows pgsql (PostgreSQL) driver option (value `3`) and bcrypt
+  - Website Settings includes `openmu_api_base_url` and `game_server_ip` fields
 - Server Status added to header with TCP port probing (configurable IP/ports, timeout).
 - News Categories: optional `category` per news item; clickable category filter on homepage and `/news`.
 - Truncated news on `/news` list to 250 words with “Read more”; fixed encoding in truncation.
@@ -28,6 +32,9 @@
 - AdminCP Home stats read from OpenMU tables.
 - Account/Character search and info modules adapted to UUIDs and OpenMU column names.
 - Rankings rebuild/fallback logic improved; online indicators now use API when available.
+- Guild rankings (OpenMU): dynamic guild master FK detection; member counts use `GuildId` (UUID); guild logo conversion handles PostgreSQL LOB streams
+- Admin Online Accounts: removed DB server grouping; uses Admin API for total and player list
+- Admin settings forms now preserve unknown keys in `webengine.json` and prefill from config
 - Downloads admin maps type to `data.webengine_downloads.category`; frontend categorizes legacy entries heuristically if missing.
 
 #### Fixed
@@ -38,6 +45,7 @@
 - Character edit: mapped OpenMU stats/fields; read-only fields set appropriately; PK level computed; money from `ItemStorage`.
 - Add Stats: fixed LevelUpPoints/experience checks, money checks, and OpenMU stat attribute updates with safe insert-if-missing for Base attributes (including Vitality) and synonym handling.
 - Encoding issues in news truncation fixed.
+- Guild icon rendering: `convertOpenMUGuildLogoToHex()` now safely reads LOB streams before hex encoding
 
 #### Known Limitations (OpenMU Mode)
 - UserCP Unstick: not working reliably with OpenMU (UUID path). Please advise players to contact an administrator if accounts are stuck. The module remains present with an advisory notice.
@@ -49,6 +57,20 @@
   - Ban flow uses `WEBENGINE_BAN_LOG` for temporal bans; cron lifts bans from logs.
   - Credits legacy tables are optional; virtual credits remain supported.
 - See `README-OPENMU-POSTGRES.md` for full migration and troubleshooting guide.
+
+Post-release (2025-11-06)
+
+Added
+- Admin Online Accounts uses OpenMU Admin API for totals and player list
+- Admin Connection Settings exposes pgsql driver and bcrypt selection
+- Admin Website Settings exposes `openmu_api_base_url` and `game_server_ip`
+
+Changed
+- Guild rankings fully adapted to OpenMU (UUIDs, master FK discovery, LOB-safe logo)
+- Removed server grouping from Online Accounts
+
+Removed/Cleanup
+- Deleted manual tool `tools/maintenance/update_rankings_cache.php` (replaced by cron and page fallback)
 
 WebEngine CMS – OpenMU (PostgreSQL) Integration Changelog
 
