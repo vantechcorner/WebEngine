@@ -2,6 +2,17 @@
 
 WebEngine is an Open source Content Management System (CMS) for Mu Online servers. Our main goal is to provide a fast, secure and high quality framework for server owners to create and implement their own features to their websites.
 
+## WebEngine CMS 1.2.6 for OpenMU
+
+The source code has been rewritten to support OpenMU (Postgres SQL).  
+Please refer to [README-OPENMU-POSTGRES.md](./README-OPENMU-POSTGRES.md) for installation instructions,  
+or [OPENMU_INTEGRATION.md](./OPENMU_INTEGRATION.md) for the migration process.
+
+---
+
+**Ported by:** [vantc (Van Tech Corner)](https://github.com/vantechcorner)  
+with the assistance of AI collaborators such as *Cursor* and *ChatGPT*.
+
 ## Getting Started
 
 These instructions will help you deploy your own website using WebEngine CMS.
