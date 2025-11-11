@@ -67,6 +67,15 @@ Admins running OpenMU (modern) who want WebEngine CMS to use the OpenMU PostgreS
 - “Accounts from IP”, “Online Accounts”, “New Registrations”, “Search Character”, “Edit Character”, “Ban Account”, “Latest Bans”, “Search Ban”, “Blocked IPs”, “Credits Configs/Manager”, “Top Voters” updated to PostgreSQL + OpenMU.
 - Rankings (level/killers) and player profiles show API-backed online indicators.
 - Guild rankings: uses OpenMU schema with UUIDs; detects guild master FK; counts members by `GuildId`; handles logo LOB streams.
+ 
+### Responsive Template (Mobile/Desktop)
+- Mobile viewport enabled; container becomes fluid on small screens.
+- Navbar collapses into a hamburger menu; desktop shows the classic horizontal menu.
+- Header info (Server Status, Online Users, Server Time, Your Time):
+  - Mobile: larger fonts and compact spacing
+  - Desktop: smaller fonts; values right-aligned to match legacy layout
+- News category badges auto-truncate with ellipsis; added spacing below the news list.
+- Wide tables (rankings/general UI) gain horizontal scroll on narrow screens.
 
 ## Character Stat Management
 - Add Stats reads `LevelUpPoints`, computes level from `Experience`, validates class for Leadership, checks money from `ItemStorage`.

@@ -12,7 +12,7 @@
  */
 ?>
 <div class="row">
-	<div class="col-xs-8 home-news-block">
+	<div class="col-sm-8 home-news-block">
 		<div class="row home-news-block-header">
 			<div class="col-xs-8">
 				<h2><?php echo lang('news_txt_4'); ?></h2>
@@ -64,7 +64,7 @@
 			</div>
 		</div>
 	</div>
-	<div class="col-xs-4">
+	<div class="col-sm-4">
 		<?php
 		if(!isLoggedIn()) {
 			echo '<div class="panel panel-sidebar">';
@@ -100,7 +100,7 @@
 </div>
 
 <div class="row" style="margin-top: 20px;">
-	<div class="col-xs-4">
+	<div class="col-sm-4">
 		<?php
 		// Top Level
 		$levelRankingData = LoadCacheData('rankings_level.cache');
@@ -136,7 +136,7 @@
 		}
 		?>
 	</div>
-	<div class="col-xs-4">
+	<div class="col-sm-4">
 		<?php
 		// Top Guilds
 		$guildRankingData = LoadCacheData('rankings_guilds.cache');
@@ -174,7 +174,7 @@
 		}
 		?>
 	</div>
-	<div class="col-xs-4">
+	<div class="col-sm-4">
 		<?php
 		// Event Timers
 		echo '<div class="panel panel-sidebar panel-sidebar-events">';

@@ -55,6 +55,7 @@ if(!isset($_REQUEST['subpage'])) {
 		<meta name="author" content="Lautaro Angelico"/>
 		<meta name="description" content="<?php config('website_meta_description'); ?>"/>
 		<meta name="keywords" content="<?php config('website_meta_keywords'); ?>"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
 		<meta property="og:type" content="website" />
 		<meta property="og:title" content="<?php $handler->websiteTitle(); ?>" />
 		<meta property="og:description" content="<?php config('website_meta_description'); ?>" />
@@ -94,8 +95,21 @@ if(!isset($_REQUEST['subpage'])) {
 				</div>
 			</div>
 		</div>
-		<div id="navbar">
-			<?php templateBuildNavbar(); ?>
+		<div id="navbar" class="navbar navbar-inverse" role="navigation">
+			<div class="container-fluid">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#webengine-navbar" aria-expanded="false">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand visible-xs" href="<?php echo __BASE_URL__; ?>"><?php config('server_name'); ?></a>
+				</div>
+				<div class="collapse navbar-collapse" id="webengine-navbar">
+					<?php templateBuildNavbar(); ?>
+				</div>
+			</div>
 		</div>
 		<div id="header">
 			<a href="<?php echo __BASE_URL__; ?>">
@@ -108,23 +122,15 @@ if(!isset($_REQUEST['subpage'])) {
 				<div class="col-xs-12">
 					<div class="col-xs-12 header-info-block">
 						<?php if($serverOnline !== null) { ?>
-						<div class="row">
-							<div class="col-xs-6 text-left">
-								Server Status:
-							</div>
-							<div class="col-xs-6 text-right">
-								<span class="server-status <?php echo $serverOnline ? 'server-status-online' : 'server-status-offline'; ?>"><?php echo $serverOnline ? 'Online' : 'Offline'; ?></span>
-							</div>
+						<div class="info-row">
+							<span class="info-label">Server Status:</span>
+							<span class="info-value"><span class="server-status <?php echo $serverOnline ? 'server-status-online' : 'server-status-offline'; ?>"><?php echo $serverOnline ? 'Online' : 'Offline'; ?></span></span>
 						</div>
 						<?php } ?>
 						<?php if(check_value(config('maximum_online', true))) { ?>
-						<div class="row">
-							<div class="col-xs-6 text-left">
-								<?php echo lang('sidebar_srvinfo_txt_5'); ?>:
-							</div>
-							<div class="col-xs-6 text-right online-count">
-								<?php echo number_format($onlinePlayers); ?>
-							</div>
+						<div class="info-row">
+							<span class="info-label"><?php echo lang('sidebar_srvinfo_txt_5'); ?>:</span>
+							<span class="info-value online-count"><?php echo number_format($onlinePlayers); ?></span>
 						</div>
 						<div class="row">
 							<div class="col-xs-12">
@@ -134,20 +140,13 @@ if(!isset($_REQUEST['subpage'])) {
 							</div>
 						</div>
 						<?php } ?>
-						<div class="row">
-							<div class="col-xs-6 text-left">
-								<?php echo lang('server_time'); ?>:
-							</div>
-							<div class="col-xs-6 text-right">
-								<time id="tServerTime">&nbsp;</time> <span id="tServerDate">&nbsp;</span>
-							</div>
-							
-							<div class="col-xs-6 text-left">
-								<?php echo lang('user_time'); ?>:
-							</div>
-							<div class="col-xs-6 text-right">
-								<time id="tLocalTime">&nbsp;</time> <span id="tLocalDate">&nbsp;</span>
-							</div>
+						<div class="info-row">
+							<span class="info-label"><?php echo lang('server_time'); ?>:</span>
+							<span class="info-value"><time id="tServerTime">&nbsp;</time> <span id="tServerDate">&nbsp;</span></span>
+						</div>
+						<div class="info-row">
+							<span class="info-label"><?php echo lang('user_time'); ?>:</span>
+							<span class="info-value"><time id="tLocalTime">&nbsp;</time> <span id="tLocalDate">&nbsp;</span></span>
 						</div>
 						
 					</div>
@@ -158,10 +157,10 @@ if(!isset($_REQUEST['subpage'])) {
 		<div id="container">
 			<div id="content">
 				<?php if($_REQUEST['page'] == 'usercp' && $_REQUEST['subpage'] != '') { ?>
-				<div class="col-xs-8">
+				<div class="col-sm-8">
 					<?php $handler->loadModule($_REQUEST['page'],$_REQUEST['subpage']); ?>
 				</div>
-				<div class="col-xs-4">
+				<div class="col-sm-4">
 					<?php include(__PATH_TEMPLATE_ROOT__ . 'inc/modules/sidebar.php'); ?>
 				</div>
 				<?php } else { ?>

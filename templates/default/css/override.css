@@ -70,3 +70,165 @@ a.thumbnail.active {
 .form-horizontal .control-label {
 	text-align: left !important;
 }
+
+/* Responsive enhancements */
+*,
+*:before,
+*:after {
+	box-sizing: border-box;
+}
+html {
+	min-width: 0 !important;
+}
+img {
+	max-width: 100%;
+	height: auto;
+}
+#header {
+	padding: 40px 0 10px 0;
+}
+#content {
+	padding: 10px 10px 0 10px;
+}
+#navbar {
+	width: 100%;
+}
+#navbar .navbar-toggle {
+	margin: 8px 10px;
+}
+#navbar .navbar-brand {
+	color: #ccc;
+}
+#container {
+	width: 100% !important;
+	max-width: 1040px;
+	margin: 0 auto;
+}
+.footer {
+	width: 100% !important;
+	max-width: 1040px;
+}
+.global-top-bar .global-top-bar-content {
+	width: 100% !important;
+	padding: 0 10px;
+	box-sizing: border-box;
+}
+.header-info-container {
+	width: 100% !important;
+	padding: 0 10px;
+	box-sizing: border-box;
+}
+.header-info-container .header-info .info-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+.header-info-container .header-info .info-label {
+	color: #cccccc;
+	flex: 0 0 auto;
+}
+.header-info-container .header-info .info-value {
+	color: #ffffff;
+	flex: 0 0 auto;
+}
+.rankings-table,
+.general-table-ui {
+	display: block;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+/* News category label truncation and spacing */
+.home-news-block-article .home-news-block-article-type {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.home-news-block {
+	margin-bottom: 20px;
+}
+#navbar ul {
+	padding-left: 0;
+}
+@media (min-width: 768px) {
+	/* Ensure desktop navbar is visible and centered */
+	#webengine-navbar {
+		display: block !important;
+		height: auto !important;
+	}
+	#navbar .navbar-collapse {
+		text-align: center;
+	}
+	#navbar .navbar-nav {
+		float: none;
+		display: inline-block;
+	}
+	/* Restore desktop width and alignment for header info container */
+	.header-info-container {
+		width: 1040px !important;
+		margin: 0 auto;
+		padding: 0;
+	}
+	/* Desktop: compact font sizes and right-aligned values */
+	.header-info-container .header-info .info-row {
+		justify-content: space-between;
+	}
+	.header-info-container .header-info .info-label,
+	.header-info-container .header-info .info-value {
+		font-size: 12px;
+	}
+	.header-info-container .header-info .info-value {
+		text-align: right;
+	}
+}
+@media (max-width: 991px) {
+	#navbar ul li a {
+		padding: 15px 18px;
+	}
+	.header-info-container .header-info {
+		width: 100% !important;
+	}
+}
+@media (max-width: 767px) {
+	body {
+		background-size: cover;
+		background-attachment: fixed;
+		font-size: 16px;
+	}
+	/* Mobile width and padding for header info container */
+	.header-info-container {
+		width: 100% !important;
+		padding: 0 10px;
+	}
+	.header-info-container .header-info .info-label,
+	.header-info-container .header-info .info-value {
+		font-size: 17px;
+	}
+	#header {
+		padding: 20px 0 10px 0;
+	}
+	#navbar ul li {
+		display: block;
+	}
+	#navbar ul li a {
+		display: block;
+		padding: 12px 16px;
+		font-size: 16px;
+	}
+	#navbar .navbar-brand {
+		padding-left: 16px;
+		font-size: 18px;
+	}
+	.header-info-container {
+		text-align: left;
+	}
+	.footer {
+		padding: 20px !important;
+	}
+	.page-title { font-size: 28px; }
+	.panel .panel-title { font-size: 18px; }
+	.home-news-block-article .home-news-block-article-title { font-size: 16px; }
+	.home-news-block-article .home-news-block-article-date { font-size: 14px; }
+	.myaccount-character-name a { font-size: 18px; }
+}
