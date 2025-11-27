@@ -72,20 +72,6 @@ Changed
 Removed/Cleanup
 - Deleted manual tool `tools/maintenance/update_rankings_cache.php` (replaced by cron and page fallback)
 
-Post-release (2025-11-11)
-
-Added
-- Responsive template improvements:
-  - Mobile viewport and fluid container
-  - Collapsible hamburger navigation (Bootstrap) on small screens
-  - Horizontal scrolling for wide tables
-  - Mobile-friendly font sizes
-
-Changed
-- Header info (Server Status, Online Users, Times) uses compact rows with reduced spacing
-- News category labels auto-truncate with ellipsis; added spacing between News and UserCP blocks
-- Desktop preserves legacy look: smaller fonts and right-aligned values for header info
-
 WebEngine CMS – OpenMU (PostgreSQL) Integration Changelog
 
 Unreleased (OpenMU/PostgreSQL Integration)

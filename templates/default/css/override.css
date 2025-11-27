@@ -164,6 +164,13 @@ img {
 		float: none;
 		display: inline-block;
 	}
+	/* Desktop: rankings tables should occupy full width (no shrink-to-content) */
+	.rankings-table,
+	.general-table-ui {
+		display: table;
+		width: 100%;
+		overflow-x: visible;
+	}
 	/* Restore desktop width and alignment for header info container */
 	.header-info-container {
 		width: 1040px !important;
